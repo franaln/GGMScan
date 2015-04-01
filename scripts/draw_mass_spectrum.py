@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2.7
 # Code to draw mass spectrum from slha input file
 
 import os
@@ -7,6 +7,7 @@ import string
 import math
 import argparse
 import ROOT
+import pyslha
 
 from rootutils import set_default_style, get_color
 
@@ -143,15 +144,15 @@ def draw_mass_spectrum(particles, min_=-9999, max_=-9999, output_name='plot.pdf'
 
     frame = ROOT.TH2F("frame", "", 1, -1, Nparts+6, 100, min_, max_)
 
-    frame.GetXaxis().SetLabelSize(0);
-    frame.GetXaxis().SetTickLength(0);
-    frame.GetXaxis().SetTitle("SUSY PARTICLES");
-    frame.GetXaxis().CenterTitle();
-    frame.GetXaxis().SetTitleOffset(0.6);
+    frame.GetXaxis().SetLabelSize(0)
+    frame.GetXaxis().SetTickLength(0)
+    frame.GetXaxis().SetTitle("") #SUSY PARTICLES");
+    frame.GetXaxis().CenterTitle()
+    frame.GetXaxis().SetTitleOffset(0.6)
 
-    frame.GetYaxis().SetTitle("Mass [GeV]");
-    frame.GetYaxis().SetTitleOffset(1.2);
-    frame.GetYaxis().SetRangeUser(min_, max_);
+    frame.GetYaxis().SetTitle("Mass [GeV]")
+    frame.GetYaxis().SetTitleOffset(1.2)
+    frame.GetYaxis().SetRangeUser(min_, max_)
 
     frame.Draw()
 
@@ -173,63 +174,18 @@ def main():
 
     ifile = args.ifile
 
-    if not os.path.exists(ifile):
-        print "\nFile \'"+ifile+"\' seems not to exist. Please check and come back...\n"
+    if ifile is None or not os.path.exists(ifile):
+        parser.print_usage()
         sys.exit(1)
 
+    ## Read spectrum file
+    try:
+        doc = pyslha.read(ifile)
+        masses = doc.blocks['MASS']
+    except pyslha.ParseError, pe:
+        print str(pe) + "... exiting"
+        sys.exit(1)
 
-    #Load input file
-    spectrum = open(ifile)
-
-    ### Get mass of susy particles
-    particles = dict()
-
-    #Neutralinos
-    particles['chi10'] = -9999
-    particles['chi20'] = -9999
-    particles['chi30'] = -9999
-    particles['chi40'] = -9999
-
-    #Charginos
-    particles['chi1p'] = -9999
-    particles['chi2p'] = -9999
-
-    #Squarks
-    particles['uL'] = -9999
-    particles['uR'] = -9999
-    particles['dL'] = -9999
-    particles['dR'] = -9999
-    particles['sL'] = -9999
-    particles['sR'] = -9999
-    particles['cL'] = -9999
-    particles['cR'] = -9999
-    particles['t1'] = -9999
-    particles['t2'] = -9999
-    particles['b1'] = -9999
-    particles['b2'] = -9999
-
-    #Sleptons
-    particles['eL'] = -9999
-    particles['eR'] = -9999
-    particles['nu_eL'] = -9999
-    particles['muL'] = -9999
-    particles['muR'] = -9999
-    particles['nu_muL'] = -9999
-    particles['tau1'] = -9999
-    particles['tau2'] = -9999
-    particles['nu_tauL'] = -9999
-
-    #Higgses
-    particles['h0'] = -9999
-    particles['H'] = -9999
-    particles['Hp'] = -9999
-    particles['A'] = -9999
-
-    #gluino
-    particles['gl'] = -9999
-
-    #gravitino
-    particles['G']=-9999
 
     def find_max(lst):
         max_ = 0
@@ -245,163 +201,58 @@ def main():
                 min_ = float(item)
         return min_
 
-    def format_line(line):
-        line.replace(" ","$")
-        sl = ''
-        add = False
-        for ch in line:
-            if ch == "$":
-                add = True
-                continue
-            else:
-                if add:
-                    sl = sl+" "+ch
-                    add = False
-        return sl
+    ### Get mass of susy particles
+    particles = dict()
 
-    #Extract masses from file
-    mlist = []
-    for line in spectrum:
-        fields = line.split()
+    #Neutralinos
+    particles['chi10'] = masses[1000022]
+    particles['chi20'] = masses[1000023]
+    particles['chi30'] = masses[1000025]
+    particles['chi40'] = masses[1000035]
 
-        if "decays" in line: #to avoid overwritten values
-            continue
+    #Charginos
+    particles['chi1p'] = masses[1000024]
+    particles['chi2p'] = masses[1000037]
 
-        if "# ~chi_10" in line:
-            particles['chi10'] = math.fabs(float(fields[1]))
-            mlist.append(particles['chi10'])
-            continue
-        if "# ~chi_20" in line:
-            particles['chi20'] = math.fabs(float(fields[1]))
-            mlist.append(particles['chi20'])
-            continue
-        if "# ~chi_30" in line:
-            particles['chi30'] = math.fabs(float(fields[1]))
-            mlist.append(particles['chi30'])
-            continue
-        if "# ~chi_40" in line:
-            particles['chi40'] = math.fabs(float(fields[1]))
-            mlist.append(particles['chi40'])
-            continue
-        if "# ~chi_1+" in line:
-            particles['chi1p'] = math.fabs(float(fields[1]))
-            mlist.append(particles['chi1p'])
-            continue
-        if "# ~chi_2+" in line:
-            particles['chi2p'] = math.fabs(float(fields[1]))
-            mlist.append(particles['chi2p'])
-            continue
-        if "# ~u_L" in line:
-            particles['uL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['uL'])
-            continue
-        if "# ~u_R" in line:
-            particles['uR'] = math.fabs(float(fields[1]))
-            mlist.append(particles['uR'])
-            continue
-        if "# ~d_L" in line:
-            particles['dL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['dL'])
-            continue
-        if "# ~d_R" in line:
-            particles['dR'] = math.fabs(float(fields[1]))
-            mlist.append(particles['dR'])
-            continue
-        if "# ~s_L" in line:
-            particles['sL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['sL'])
-            continue
-        if "# ~s_R" in line:
-            particles['sR'] = math.fabs(float(fields[1]))
-            mlist.append(particles['sR'])
-            continue
-        if "# ~c_L" in line:
-            particles['cL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['cL'])
-            continue
-        if "# ~c_R" in line:
-            particles['cR'] = math.fabs(float(fields[1]))
-            mlist.append(particles['cR'])
-            continue
-        if "# ~t_1" in line:
-            particles['t1'] = math.fabs(float(fields[1]))
-            mlist.append(particles['t1'])
-            continue
-        if "# ~t_2" in line:
-            particles['t2'] = math.fabs(float(fields[1]))
-            mlist.append(particles['t2'])
-            continue
-        if "# ~b_1" in line:
-            particles['b1'] = math.fabs(float(fields[1]))
-            mlist.append(particles['b1'])
-            continue
-        if "# ~b_2" in line:
-            particles['b2'] = math.fabs(float(fields[1]))
-            mlist.append(particles['b2'])
-            continue
-        if "# ~e_L" in line:
-            particles['eL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['eL'])
-            continue
-        if "# ~e_R" in line:
-            particles['eR'] = math.fabs(float(fields[1]))
-            mlist.append(particles['eR'])
-            continue
-        if "# ~nu_eL" in line:
-            particles['nu_eL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['nu_eL'])
-            continue
-        if "# ~mu_L" in line:
-            particles['muL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['muL'])
-            continue
-        if "# ~mu_R" in line:
-            particles['muR'] = math.fabs(float(fields[1]))
-            mlist.append(particles['muR'])
-            continue
-        if "# ~nu_muL" in line:
-            particles['nu_muL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['nu_muL'])
-            continue
-        if "# ~tau_1" in line:
-            particles['tau1'] = math.fabs(float(fields[1]))
-            mlist.append(particles['tau1'])
-            continue
-        if "# ~tau_2" in line:
-            particles['tau2'] = math.fabs(float(fields[1]))
-            mlist.append(particles['tau2'])
-            continue
-        if "# ~nu_tauL" in line:
-            particles['nu_tauL'] = math.fabs(float(fields[1]))
-            mlist.append(particles['nu_tauL'])
-            continue
-        if "# h" in line and fields[0] == "25":
-            particles['h0'] = math.fabs(float(fields[1]))
-            mlist.append(particles['h0'])
-            continue
-        if "# H" in line and fields[0] == "35":
-            particles['H'] = math.fabs(float(fields[1]))
-            mlist.append(particles['H'])
-            continue
-        if "# H+" in line and fields[0] == "37":
-            particles['Hp'] = math.fabs(float(fields[1]))
-            mlist.append(particles['Hp'])
-            continue
-        if "# A" in line and fields[0] == "36":
-            particles['A'] = math.fabs(float(fields[1]))
-            mlist.append(particles['A'])
-            continue
-        if "# ~g" in line and fields[0] == "1000021":
-            particles['gl'] = math.fabs(float(fields[1]))
-            mlist.append(particles['gl'])
-            continue
-        if "# ~gravitino" in line:
-            particles['G'] = math.fabs(float(fields[1]))
-            mlist.append(particles['G'])
-            continue
+    #Squarks
+    particles['uL'] = masses[1000002]
+    particles['uR'] = masses[2000002]
+    particles['dL'] = masses[1000001]
+    particles['dR'] = masses[2000001]
+    particles['sL'] = masses[1000003]
+    particles['sR'] = masses[2000003]
+    particles['cL'] = masses[1000004]
+    particles['cR'] = masses[2000004]
+    particles['t1'] = masses[1000006]
+    particles['t2'] = masses[2000006]
+    particles['b1'] = masses[1000005]
+    particles['b2'] = masses[2000005]
 
-    xmax = find_max(mlist)*1.1
-    xmin = find_min(mlist)*0.8
+    #Sleptons
+    particles['eL']      = masses[1000011]
+    particles['eR']      = masses[2000011]
+    particles['nu_eL']   = masses[1000012]
+    particles['muL']     = masses[1000013]
+    particles['muR']     = masses[2000013]
+    particles['nu_muL']  = masses[1000014]
+    particles['tau1']    = masses[1000015]
+    particles['tau2']    = masses[2000015]
+    particles['nu_tauL'] = masses[1000016]
+
+    #Higgses
+    particles['h0'] = masses[25]
+    particles['H']  = masses[35]
+    particles['Hp'] = masses[37]
+    particles['A']  = masses[36]
+
+    #gluino
+    particles['gl'] = masses[1000021]
+
+    #gravitino
+    particles['G'] = masses[1000039]
+
+    xmax = find_max(particles.values()) * 1.1
+    xmin = find_min(particles.values()) * 0.8
 
     #Call Drawing code for read spectrum
     output_name = os.path.basename(ifile).replace('slha', 'pdf')
