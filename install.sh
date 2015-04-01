@@ -41,23 +41,23 @@ tar zxfv suspect2.tar.gz
 ## compile it
 echo
 echo ">> compiling..."
-echo 'g77 -c suspect2_call.f suspect2.f twoloophiggs.f bsg.f' > compileit.sh
-echo 'g77 -o suspect2 suspect2_call.o suspect2.o twoloophiggs.o bsg.o' >> compileit.sh
+echo 'gfortran -c suspect2_call.f suspect2.f twoloophiggs.f bsg.f' > compileit.sh
+echo 'gfortran -o suspect2 suspect2_call.o suspect2.o twoloophiggs.o bsg.o' >> compileit.sh
 chmod +x compileit.sh
 . compileit.sh
 
 cd $ROOTDIR
 
 ## create
-echo
-echo ">> creating dir structure..."
-mkdir -p RunDir/plots
-mkdir -p RunDir/logs
-mkdir -p RunDir/output/SLHA
+#echo
+#echo ">> creating dir structure..."
+# mkdir -p RunDir/plots
+# mkdir -p RunDir/logs
+# mkdir -p RunDir/output/SLHA
 
 ##create envsetup script
-echo "export SGRIDENV=$PWD" > env.sh
-chmod +x env.sh
+# echo "export SGRIDENV=$PWD" > env.sh
+# chmod +x env.sh
 
 echo
 echo "GO!!"
