@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2.7
 
 import os
 import sys
@@ -8,9 +8,9 @@ import array
 import argparse
 
 # config
-parser = argparse.ArgumentParser(description='draw particles decays from grid slha files')
+parser = argparse.ArgumentParser(description='create tree from slha files')
 parser.add_argument('slhapath', nargs='?', help='Path to slha files')
-parser.add_argument('-o', dest='output_file', help='Output file')
+parser.add_argument('-o', dest='output_file', help='Output file', required=True)
 
 args = parser.parse_args()
 
