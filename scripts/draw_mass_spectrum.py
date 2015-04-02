@@ -251,6 +251,9 @@ def main():
     #gravitino
     particles['G'] = masses[1000039]
 
+    for pid, mass in particles.iteritems():
+        particles[pid] = abs(mass)
+
     xmax = find_max(particles.values()) * 1.1
     xmin = find_min(particles.values()) * 0.8
 
