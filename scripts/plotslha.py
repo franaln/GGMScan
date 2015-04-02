@@ -51,7 +51,7 @@ labels = {
 }
 
 
-def slhaplot(filename, x, y, z, outname):
+def slhaplot(filename, x, y=None, z=None, outname='x.pdf'):
 
     set_default_style()
 
@@ -67,7 +67,10 @@ def slhaplot(filename, x, y, z, outname):
     tree.SetMarkerStyle(21)
     tree.SetMarkerSize(1)
 
-    varstr = '%s:%s:%s>>htmp' % (y, x, z)
+    if y is not None and z is not None:
+        varstr = '%s:%s:%s>>htmp' % (y, x, z)
+    else:
+        varstr = '%s>>htmp' % x
 
     tree.Draw(varstr, '', 'col goff')
 
@@ -77,9 +80,13 @@ def slhaplot(filename, x, y, z, outname):
     hist.SetStats(0)
 
     hist.GetXaxis().SetTitle(labels.get(x, x))
-    hist.GetYaxis().SetTitle(labels.get(y, y))
-    hist.GetZaxis().SetTitle(labels.get(z, z))
-    hist.GetZaxis().SetTitleOffset(1.6)
+
+    if y is not None:
+        hist.GetYaxis().SetTitle(labels.get(y, y))
+
+    if z is not None:
+        hist.GetZaxis().SetTitle(labels.get(z, z))
+        hist.GetZaxis().SetTitleOffset(1.6)
 
     # nrows = tree.GetSelectedRows();
     # v1 = tree.GetV1()
