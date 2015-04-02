@@ -531,8 +531,8 @@ def set_default_style():
     ROOT.gStyle.SetTitleBorderSize(0)
     ROOT.gStyle.SetTitleFillColor(0)
     ROOT.gStyle.SetTextFont(132)
-    ROOT.gStyle.SetLabelFont(132,"XY")
-    ROOT.gStyle.SetTitleFont(132,"XY")
+    ROOT.gStyle.SetLabelFont(132,"XYZ")
+    ROOT.gStyle.SetTitleFont(132,"XYZ")
     ROOT.gStyle.SetEndErrorSize(0)
 
 
