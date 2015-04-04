@@ -9,7 +9,16 @@ class ProgressBar:
         self.done = done
         self.barlength = 100
         self.increment = int(total/self.barlength)
+        self.increment_n = 1
         self.current_progress = 0
+
+        if self.increment == 0:
+            self.increment = 1
+            self.barlength = total
+
+        for i in xrange(done):
+            if i % self.increment == 0:
+                self.current_progress += 1
 
     def print_bar(self, event):
 
@@ -25,8 +34,25 @@ class ProgressBar:
 
         elapsed_time = time.time() - self.start_time
 
+        self.last_time = time.time()
+        self.last_event = event
+
         rate = self.get_rate(event, elapsed_time)
-        remaining_time = self.get_remaining_time(event, elapsed_time)
+        remaining_time = self.get_remaining_time(event, rate)
+
+        unit = 0
+        while (rate >= 1.e3 and unit < 3):
+            rate /= 1.e3
+            unit += 1
+        rate_str = '%.2f ' % rate
+        if unit == 0:
+            rate_str += "Hz"
+        elif unit == 1:
+            rate_str += "kHz"
+        elif unit == 2:
+            rate_str += "MHz"
+        elif unit == 3:
+            rate_str += "GHz"
 
         bar = '['
         for i in xrange(self.barlength):
@@ -38,7 +64,7 @@ class ProgressBar:
         perc = event/float(self.total) * 100
 
         bar += "] %i of %i " % (event, self.total)
-        bar += " (%i%%) | %s | %s remaining"  %  (perc, rate, remaining_time)
+        bar += " (%i%%) | %s | %s remaining"  %  (perc, rate_str, remaining_time)
 
         # Add new line (only for last line in fancy draw mode)
         if event == self.total:
@@ -56,35 +82,22 @@ class ProgressBar:
     def get_rate(self, event, elapsed_time):
 
         if event == 0:
-            return "--"
+            return 0
 
         rate = (event-self.done)/elapsed_time
-        unit = 0
 
-        while (rate >= 1.e3 and unit < 3):
-            rate /= 1.e3
-            unit += 1
+        return rate
 
-        rate_str = '%.2f ' % rate
-
-        if unit == 0:
-            rate_str += "Hz"
-        elif unit == 1:
-            rate_str += "kHz"
-        elif unit == 2:
-            rate_str += "MHz"
-        elif unit == 3:
-            rate_str += "GHz";
-
-        return rate_str
-
-    def get_remaining_time(self, event, elapsed_time):
+    def get_remaining_time(self, event, rate):
 
         if event == 0:
             return "--"
 
-        remaining_time = float(self.total)/(event-self.done) - 1
-        remaining_time *= elapsed_time
+        remaining_events = self.total - event
+        remaining_time = remaining_events / rate
+
+        # remaining_time = float(self.total-self.done)/(event-self.done) - 1
+        # remaining_time *= elapsed_time
 
         unit = 0
         while (remaining_time > 60 and unit < 2):
@@ -104,8 +117,20 @@ class ProgressBar:
 
 
 def test():
-    pb = ProgressBar(500)
-    for i in xrange(500):
+    import sys
+
+    if len(sys.argv) > 2:
+        total = int(sys.argv[1])
+        done = int(sys.argv[2])
+    elif len(sys.argv) > 1:
+        total = int(sys.argv[1])
+        done = 0
+    else:
+        total = 100
+        done = 0
+
+    pb = ProgressBar(total, done)
+    for i in xrange(done, total):
         time.sleep(0.1)
         pb.print_bar(i+1)
 
