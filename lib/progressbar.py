@@ -94,7 +94,11 @@ class ProgressBar:
             return "--"
 
         remaining_events = self.total - event
-        remaining_time = remaining_events / rate
+
+        try:
+            remaining_time = remaining_events / rate
+        except ZeroDivisionError:
+            return '--'
 
         # remaining_time = float(self.total-self.done)/(event-self.done) - 1
         # remaining_time *= elapsed_time
