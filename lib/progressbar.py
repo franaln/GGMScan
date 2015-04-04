@@ -3,9 +3,10 @@ import time
 
 class ProgressBar:
 
-    def __init__(self, total):
+    def __init__(self, total, done=0):
         self.start_time = time.time()
         self.total = total
+        self.done = done
         self.barlength = 100
         self.increment = int(total/self.barlength)
         self.current_progress = 0
@@ -21,7 +22,6 @@ class ProgressBar:
             pass
         else:
             return
-
 
         elapsed_time = time.time() - self.start_time
 
@@ -58,7 +58,7 @@ class ProgressBar:
         if event == 0:
             return "--"
 
-        rate = event/elapsed_time
+        rate = (event-self.done)/elapsed_time
         unit = 0
 
         while (rate >= 1.e3 and unit < 3):
@@ -83,7 +83,7 @@ class ProgressBar:
         if event == 0:
             return "--"
 
-        remaining_time = float(self.total)/event - 1
+        remaining_time = float(self.total)/(event-self.done) - 1
         remaining_time *= elapsed_time
 
         unit = 0
