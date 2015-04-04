@@ -181,7 +181,8 @@ def main():
     # pool = multiprocessing.Pool(processes=args.ncores)
     # jobs = []
     outdir = '.'
-    progress = len(done_files)
+
+    progress = len(done_files) + 1
     for at in v_At:
         for tanb in v_tanbeta:
             for msq in v_Msq:
