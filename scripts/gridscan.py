@@ -129,7 +129,7 @@ def main():
     else:
         run_dir = args.outputdir
 
-        if not os.path.exists(run_dir) and os.path.isdir(run_dir):
+        if not os.path.exists(run_dir):
             os.system('mkdir -p %s' % run_dir)
 
 
@@ -140,14 +140,6 @@ def main():
 
     os.chdir(run_dir)
 
-    # Check scan status
-    slha_files = glob.glob('at*.slha')
-
-    done_files = filter(os.path.isfile, glob.glob('at*.slha'))
-    done_files.sort(key=lambda x: os.path.getmtime(x))
-
-    # FIX: check for errors in done_files
-    done_files = done_files[:-1]
 
     # SUSYHIT scan
     useM1muRelation = False
@@ -168,6 +160,20 @@ def main():
                                     continue
 
                                 njobs += 1
+
+    # Check scan status
+    slha_files = glob.glob('at*.slha')
+
+    if len(slha_files) > 0:
+        done_files = filter(os.path.isfile, slha_files)
+        done_files.sort(key=lambda x: os.path.getmtime(x))
+
+        print 'Found %i slha files already done. Continue with the remaining jobs...' % len(done_files)
+
+        # FIX: check for errors in done_files
+        done_files = done_files[:-1]
+    else:
+        done_files = []
 
     # SUSY-HIT: generate SLHA files one by one
     bar = ProgressBar(njobs, len(done_files))
@@ -190,7 +196,7 @@ def main():
 
                                 if (progress % 1000) == 0:
                                     outdir = '%i' % (progress % 1000)
-                                    os.system('mkdirp %s' % outdir)
+                                    os.system('mkdir -p %s' % outdir)
 
                                 outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
 
