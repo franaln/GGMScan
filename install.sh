@@ -55,9 +55,10 @@ cd $ROOTDIR
 # mkdir -p RunDir/logs
 # mkdir -p RunDir/output/SLHA
 
-##create envsetup script
-# echo "export SGRIDENV=$PWD" > env.sh
-# chmod +x env.sh
+##create setup script
+echo export SUSYGRID=$PWD >> setup.sh
+echo export PATH=$PWD/scripts:$PATH >> setup.sh
+echo export PYTHONPATH=$PWD/lib:$PYTHONPATH >> setup.sh
 
 echo
 echo "GO!!"
