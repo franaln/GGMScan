@@ -149,7 +149,7 @@ msq_step = 50
 v_At = [0] #At possible values
 
 hmass = 125
-tanbeta = 1.5
+v_tanbeta = [1.5, 5., 10., 25., 50.]
 
 iN_m1  = (m1_max - m1_min)/m1_step
 iN_m3  = (m3_max - m3_min)/m3_step
@@ -183,17 +183,18 @@ vbos = False
 
 # Count jobs
 njobs = 0
-for at in v_At:
-    for mu in v_mu:
-        for m3 in v_M3:
-            for msq in v_Msq:
-                for Gmass in v_Gmass:
-                    for m1 in v_M1:
-                        # make sure that the (aprox) M(chi10) is greater than M(gluino)
-                        if mu > m3 or mu > msq:
-                            continue
+for tanbeta in v_tanbeta:
+    for at in v_At:
+        for mu in v_mu:
+            for m3 in v_M3:
+                for msq in v_Msq:
+                    for Gmass in v_Gmass:
+                        for m1 in v_M1:
+                            # make sure that the (aprox) M(chi10) is greater than M(gluino)
+                            if mu > m3 or mu > msq:
+                                continue
 
-                        njobs += 1
+                            njobs += 1
 
 
 bar = ProgressBar(njobs)
@@ -203,7 +204,7 @@ def worker(i, m1, m3, mu, at, tanbeta, Gmass):
 
     # if (Progress % 10 == 0):
 
-    outfile = 'M1_%s_M3_%s_mu_%s_At_%s_tanB_%s_Gmass_%s.out' % (m1, m3, mu, at, tanbeta, Gmass)
+    outfile = 'M1_%s_M3_%s_mu_%s_At_%s_tanb_%s_Gmass_%s.slha' % (m1, m3, mu, at, tanbeta, Gmass)
 
     # Create Suspect input
     writeSuspectPar(m1, m3, mu, msq, at, tanbeta)
@@ -245,31 +246,28 @@ def worker(i, m1, m3, mu, at, tanbeta, Gmass):
 
 
 
-pool = multiprocessing.Pool(processes=args.ncores)
+# pool = multiprocessing.Pool(processes=args.ncores)
 
 progress = 0
 jobs = []
-for at in v_At:
+for tanbeta in v_tanbeta:
+    for at in v_At:
+        for mu in v_mu:
+            for m3 in v_M3:
+                for msq in v_Msq:
+                    for Gmass in v_Gmass:
+                        for m1 in v_M1:
 
-    for mu in v_mu:
+                            # make sure that the (aprox) M(chi10) is greater than M(gluino)
+                            if mu > m3 or mu > msq:
+                                continue
 
-        for m3 in v_M3:
+                            #pool.apply(worker, args=(progress, m1, m3, mu, at, tanbeta, Gmass,))
+                            worker(progress, m1, m3, mu, at, tanbeta, Gmass)
 
-            for msq in v_Msq:
-
-                for Gmass in v_Gmass:
-
-                    for m1 in v_M1:
-
-                        # make sure that the (aprox) M(chi10) is greater than M(gluino)
-                        if mu > m3 or mu > msq:
-                            continue
-
-                        pool.apply(worker, args=(progress, m1, m3, mu, at, tanbeta, Gmass,))
-
-                        progress += 1
+                            progress += 1
 
 
 # end of loops
 
-pool.close()
+#pool.close()
