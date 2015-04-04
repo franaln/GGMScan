@@ -1,6 +1,8 @@
 #! /usr/bin/env python2.7
 
 import os
+import sys
+import glob
 import math
 import shutil
 import string
@@ -99,175 +101,139 @@ Block EXTPAR                 # Input parameters
 
 
 ##--
-parser = argparse.ArgumentParser(description='')
-#parser.add_argument('slhapath', nargs='?', help='Path to slha files')
-parser.add_argument('-o', dest='output_dir', help='Output directory', required=True)
-parser.add_argument('-n', dest='ncores', type=int, default=1, help='Cores to use')
+def main():
 
-args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='')
 
-# if args.slhapath is None:
-#     parser.print_usage()
-#     sys.exit()
+    parser.add_argument('-c', dest='configfile', required=True, help='Configfile')
+    parser.add_argument('-o', dest='outputdir', help='Output directory')
+    parser.add_argument('-n', dest='ncores', type=int, default=1, help='Cores to use')
 
-
-# Run directory
-t = datetime.datetime.now()
-datestr = '%s-%s-%s_%s.%s.%s' % (t.year, t.month, t.day, t.hour, t.minute, t.second)
-
-run_dir = os.path.join(args.output_dir, 'SusyGridRun_%s' % datestr)
-os.system('mkdir %s' % run_dir)
-
-# Copy SUSYHIT executables
-shutil.copy2(os.environ['SUSYGRID'] + '/SuSpect/suspect2', '%s/suspect2' % run_dir)
-shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/run', '%s/runSUSYHIT' % run_dir)
-shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/susyhit.in', '%s/susyhit.in' % run_dir)
-
-os.chdir(run_dir)
-
-# SUSYHIT scan
-## Parameter values
-mu_min = 50
-mu_max = 2000
-mu_step = 50
-
-m1_min = 50
-m1_max = 2000
-m1_step = 50
-
-m1mu_min = 0.98
-m1mu_max = 1.0
-
-m3_min = 50
-m3_max = 2000
-m3_step = 50
-
-msq_min = 800
-msq_max = 1500
-msq_step = 50
-
-v_At = [0] #At possible values
-
-hmass = 125
-v_tanbeta = [1.5, 5., 10., 25., 50.]
-
-iN_m1  = (m1_max - m1_min)/m1_step
-iN_m3  = (m3_max - m3_min)/m3_step
-iN_mu  = (mu_max - mu_min)/mu_step
-iN_msq = (msq_max - msq_min)/msq_step
-
-grid_type = '0'
-
-if grid_type == "0":
-    iN_msq = 1
-    msq_min = 2.5E+03
-else:
-    iN_m3 = 1
-    m3_min = 2.5E+03
-
-# Construct vectors
-v_M1 = [ m1_min + ir_m1 * m1_step for ir_m1 in xrange(iN_m1) ]
-v_mu = [ mu_min + ir_mu * mu_step for ir_mu in xrange(iN_mu) ]
-
-v_M3  = [ m3_min  + ir_m3 * m3_step for ir_m3 in xrange(iN_m3) ]
-v_Msq = [ msq_min + ir_msq * msq_step for ir_msq in xrange(iN_msq) ]
-
-v_Gmass = [1E-09,]
-
-useM1muRelation = False
-useFixedMu = True
-useMuPositive = True
-
-vbos = False
+    args = parser.parse_args()
 
 
-# Count jobs
-njobs = 0
-for tanbeta in v_tanbeta:
+    try:
+        execfile(args.configfile, globals())
+    except:
+        print 'Error in the configile. exit...'
+        sys.exit(1)
+
+    # Run directory
+    if args.outputdir is None:
+        t = datetime.datetime.now()
+        datestr = '%s-%s-%s_%s.%s.%s' % (t.year, t.month, t.day, t.hour, t.minute, t.second)
+
+        run_dir = 'SusyGridRun_%s' % datestr
+        os.system('mkdir -p %s' % run_dir)
+
+    else:
+        run_dir = args.outputdir
+
+        if not os.path.exists(run_dir) and os.path.isdir(run_dir):
+            os.system('mkdir -p %s' % run_dir)
+
+
+    # Copy SUSYHIT executables
+    shutil.copy2(os.environ['SUSYGRID'] + '/SuSpect/suspect2', '%s/suspect2' % run_dir)
+    shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/run', '%s/runSUSYHIT' % run_dir)
+    shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/susyhit.in', '%s/susyhit.in' % run_dir)
+
+    os.chdir(run_dir)
+
+    # Check scan status
+    slha_files = glob.glob('at*.slha')
+
+    done_files = filter(os.path.isfile, glob.glob('at*.slha'))
+    done_files.sort(key=lambda x: os.path.getmtime(x))
+
+    # FIX: check for errors in done_files
+    done_files = done_files[:-1]
+
+    # SUSYHIT scan
+    useM1muRelation = False
+    useFixedMu = True
+    useMuPositive = True
+
+    # Count total jobs
+    njobs = 0
     for at in v_At:
-        for mu in v_mu:
-            for m3 in v_M3:
-                for msq in v_Msq:
-                    for Gmass in v_Gmass:
-                        for m1 in v_M1:
-                            # make sure that the (aprox) M(chi10) is greater than M(gluino)
-                            if mu > m3 or mu > msq:
-                                continue
+        for tanb in v_tanbeta:
+            for msq in v_Msq:
+                for m3 in v_M3:
+                    for m1 in v_M1:
+                        for mu in v_mu:
+                            for Gmass in v_Gmass:
+                                # make sure that the (aprox) M(chi10) is greater than M(gluino)
+                                if mu > m3 or mu > msq:
+                                    continue
 
-                            njobs += 1
+                                njobs += 1
 
+    # SUSY-HIT: generate SLHA files one by one
+    bar = ProgressBar(njobs, len(done_files))
 
-bar = ProgressBar(njobs)
-
-# SUSY-HIT: generate SLHA files one by one
-def worker(i, m1, m3, mu, at, tanbeta, Gmass):
-
-    # if (Progress % 10 == 0):
-
-    outfile = 'M1_%s_M3_%s_mu_%s_At_%s_tanb_%s_Gmass_%s.slha' % (m1, m3, mu, at, tanbeta, Gmass)
-
-    # Create Suspect input
-    writeSuspectPar(m1, m3, mu, msq, at, tanbeta)
-
-    # Run Suspect
-    #print 'Running Suspect'
-    os.system('./suspect2 > /dev/null')
-
-    # Save suspect output
-    #os.system('cp suspect2_lha.out suspect2_lha_%s' % '
-
-    # Copy Suspect output to SUSYHIT input
-    shutil.copy2('suspect2_lha.out', 'slhaspectrum.in')
-
-    # #hack MODSEL (to make it 'look like' GMSB)
-    os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
-
-    #Fix ~t_1 mass (if needed)
-    #if [ "$gtype" == "1" ];then
-    #     ./FixT1mass slhaspectrum.in $msq
-    # fi
-
-    #add the gravitino by hand!
-    os.system('AddGravitino slhaspectrum.in 1E-9')
-
-    #Fix Higgs mass (if needed)
-    #if [ "$customHmass" -eq 1 ];then
-    #     ./FixHiggs slhaspectrum.in $Hmass
-    # fi
-
-    #run SUSYHIT
-    # echo ' Launching SUSYHIT ...'
-    #print 'Running SUSYHIT'
-    os.system('./runSUSYHIT > /dev/null')
-
-    shutil.copy2('susyhit_slha.out', outfile)
-
-    bar.print_bar(i)
-
-
-
-# pool = multiprocessing.Pool(processes=args.ncores)
-
-progress = 0
-jobs = []
-for tanbeta in v_tanbeta:
+    # pool = multiprocessing.Pool(processes=args.ncores)
+    # jobs = []
+    outdir = '.'
+    progress = len(done_files)
     for at in v_At:
-        for mu in v_mu:
-            for m3 in v_M3:
-                for msq in v_Msq:
-                    for Gmass in v_Gmass:
-                        for m1 in v_M1:
+        for tanb in v_tanbeta:
+            for msq in v_Msq:
+                for m3 in v_M3:
+                    for m1 in v_M1:
+                        for mu in v_mu:
+                            for Gmass in v_Gmass:
 
-                            # make sure that the (aprox) M(chi10) is greater than M(gluino)
-                            if mu > m3 or mu > msq:
-                                continue
+                                # make sure that the (aprox) M(chi10) is greater than M(gluino)
+                                if mu > m3 or mu > msq:
+                                    continue
 
-                            #pool.apply(worker, args=(progress, m1, m3, mu, at, tanbeta, Gmass,))
-                            worker(progress, m1, m3, mu, at, tanbeta, Gmass)
+                                if (progress % 1000) == 0:
+                                    outdir = '%i' % (progress % 1000)
+                                    os.system('mkdirp %s' % outdir)
 
-                            progress += 1
+                                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
+
+                                if outfile in done_files:
+                                    continue
+
+                                # pool.apply(worker, args=(progress, m1, m3, mu, at, tanbeta, Gmass,))
+                                #worker(progress, at, tanb, msq, m3, m1, mu, Gmass)
+
+                                # Create Suspect input
+                                writeSuspectPar(m1, m3, mu, msq, at, tanb)
+
+                                # Run Suspect
+                                #log.write('Running Suspect\n')
+                                os.system('./suspect2 > /dev/null')
+
+                                # Copy Suspect output to SUSYHIT input
+                                os.system('mv suspect2_lha.out slhaspectrum.in')
+
+                                # hack MODSEL (to make it 'look like' GMSB)
+                                os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
+
+                                # add the gravitino by hand!
+                                os.system('AddGravitino slhaspectrum.in 1E-9')
+
+                                # Fix Higgs mass (if needed)
+                                # if [ "$customHmass" -eq 1 ];then
+                                #     ./FixHiggs slhaspectrum.in $Hmass
+                                # fi
+
+                                # Run SUSYHIT
+                                #log.write('Running SUSYHIT\n')
+                                os.system('./runSUSYHIT > /dev/null')
+
+                                os.system('mv susyhit_slha.out %s' % os.path.join(outdir, outfile))
+
+                                bar.print_bar(progress)
+                                progress += 1
 
 
 # end of loops
 
-#pool.close()
+# pool.close()
+
+if __name__ == '__main__':
+    main()
