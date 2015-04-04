@@ -11,10 +11,12 @@ class ProgressBar:
         self.increment = int(total/self.barlength)
         self.increment_n = 1
         self.current_progress = 0
+        self.check_each_evts = 10
 
         if self.increment == 0:
             self.increment = 1
             self.barlength = total
+            self.check_each_evts = 1
 
         for i in xrange(done):
             if i % self.increment == 0:
@@ -27,10 +29,11 @@ class ProgressBar:
 
         if event % self.increment == 0:
             self.current_progress += 1
-        elif event % 10 == 0:
+
+        if event % self.check_each_evts == 0:
             pass
-        else:
-            return
+        # else:
+        #     return
 
         elapsed_time = time.time() - self.start_time
 
@@ -99,9 +102,6 @@ class ProgressBar:
             remaining_time = remaining_events / rate
         except ZeroDivisionError:
             return '--'
-
-        # remaining_time = float(self.total-self.done)/(event-self.done) - 1
-        # remaining_time *= elapsed_time
 
         unit = 0
         while (remaining_time > 60 and unit < 2):
