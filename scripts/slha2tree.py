@@ -9,7 +9,8 @@ import argparse
 
 # config
 parser = argparse.ArgumentParser(description='create tree from slha files')
-parser.add_argument('slhapath', nargs='?', help='Path to slha files')
+parser.add_argument('slhapath', nargs='?', help='path to slha files')
+parser.add_argument('-r', dest='recursive', action='store_true', help='recursive search slha files')
 parser.add_argument('-o', dest='output_file', help='Output file', required=True)
 
 args = parser.parse_args()
@@ -20,29 +21,19 @@ if args.slhapath is None:
 
 outfile = ROOT.TFile(args.output_file, 'recreate')
 
-def compare(x, y):
-    sx = os.path.basename(x).split('.')[0].split('_')
-    sy = os.path.basename(y).split('.')[0].split('_')
+def get_slha_files(dir_):
 
-    for i in xrange(len(x)):
-        if sx[i] == sy[i]:
-            continue
-        try:
-            nx = int(sx[i])
-            ny = int(sy[i])
-            if nx < ny:
-                return -1
-            elif nx == ny:
-                return 0
-            else:
-                return 1
-        except:
-            continue
+    for fname in os.listdir(dir_):
 
-paths = [os.path.join(args.slhapath, f) for f in os.listdir(args.slhapath)]
+        path = os.path.join(dir_, fname)
 
-slha_files = sorted(paths, cmp=compare)
+        if os.path.isdir(path) and args.recursive:
+            for rpath in get_slha_files(path):
+                yield rpath
 
+        elif os.path.isfile(path) and fname.endswith('.slha'):
+            yield path
+        
 
 # Output file and output tree
 output_file = ROOT.TFile(args.output_file, 'recreate')
@@ -55,6 +46,7 @@ variables = [
     'm3',
     'mu',
     'msq',
+    'tanb',
 
     # masses
     'm_h',
@@ -98,7 +90,10 @@ variables = [
 ntuple = ROOT.TNtuple('slha', 'slha', ':'.join(variables))
 
 # Loop over input spectrum files
-for infile in slha_files:
+for evt, infile in enumerate(get_slha_files(args.slhapath)):
+
+    if evt % 1000 == 0:
+        print 'Processing %i ...' % evt
 
     ## Read spectrum file
     BLOCKS, DECAYS = None, None
@@ -256,6 +251,7 @@ for infile in slha_files:
         m3,
         mu,
         msq,
+        tanb,
 
         # masses
         m_h,
