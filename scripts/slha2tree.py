@@ -47,6 +47,7 @@ variables = [
     'mu',
     'msq',
     'tanb',
+    'at', 
 
     # masses
     'm_h',
@@ -58,6 +59,14 @@ variables = [
     'm_c1',
     'm_c2',
     'm_G',
+
+    'lsp',
+    'nlsp',
+
+    # decay length
+    'gl_length',
+    'n1_length',
+    'n2_length',
 
     # BR
     'br_gl_n1g',
@@ -114,29 +123,39 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     mu = params[23]
     msq = params[41]
     tanb = params[25]
+    at = params[11]
 
 
     ## Masses
-    masses = BLOCKS['MASS']
+    masses = { k: abs(v) for k, v in BLOCKS['MASS'].items() }
 
-    m_h = abs(masses[25])
-    m_gl = abs(masses[1000021])
-    m_n1 = abs(masses[1000022])
-    m_n2 = abs(masses[1000023])
-    m_n3 = abs(masses[1000025])
-    m_n4 = abs(masses[1000035])
-    m_c1 = abs(masses[1000024])
-    m_c2 = abs(masses[1000037])
-    m_G = abs(masses[1000039])
+    m_h  = masses[25]
+    m_gl = masses[1000021]
+    m_n1 = masses[1000022]
+    m_n2 = masses[1000023]
+    m_n3 = masses[1000025]
+    m_n4 = masses[1000035]
+    m_c1 = masses[1000024]
+    m_c2 = masses[1000037]
+    m_G  = masses[1000039]
 
+    sorted_masses = sorted(masses.keys(), key=masses.get)
+    sparticles = [i for i in sorted_masses if i>1000000] 
+
+    lsp  = sparticles[0]
+    nlsp = sparticles[1]
 
     ## Decays
 
-    # hbar = 6.582E-25  # GeV.s
-    # cspeed = 2.99792458E8 #m.s
+    hbar = 6.582E-25  # GeV.s
+    cspeed = 2.99792458E8 #m.s
+
+    
 
     ## gluino decays
     gluino = DECAYS[1000021]
+
+    gl_length = hbar * cspeed / gluino.totalwidth * 1000.
 
     br_gl_n1qq = 0
     br_gl_n2qq = 0
@@ -188,6 +207,8 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     # neutralino1 decays
     n1 = DECAYS[1000022]
 
+    n1_length = hbar * cspeed / n1.totalwidth * 1000.
+
     br_n1_GZ = 0
     br_n1_Gy = 0
     br_n1_Gh = 0
@@ -196,7 +217,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         pid0 = abs(dc.ids[0])
         pid1 = abs(dc.ids[1])
 
-        if pid0 == 1000039 and pid1 == 23: # chi01 -> ~G Z
+        if pid0 == 1000039 and pid1 == 23:   # chi01 -> ~G Z
             br_n1_GZ += dc.br
         elif pid0 == 1000039 and pid1 == 22: # chi01 -> ~G y
             br_n1_Gy += dc.br
@@ -207,6 +228,8 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     # neutralino2 decays
     n2 = DECAYS[1000023]
 
+    n2_length = hbar * cspeed / n2.totalwidth * 1000.
+
     br_n2_n1 = 0
     br_n2_c1 = 0
     br_n2_GX = 0
@@ -215,7 +238,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         pid0 = abs(dc.ids[0])
         pid1 = abs(dc.ids[1])
 
-        if pid0 == 1000022: # N2 -> N1
+        if pid0 == 1000022:   # N2 -> N1
             br_n2_n1 += dc.br
         elif pid0 == 1000024: # N2 -> C1
             br_n2_c1 += dc.br
@@ -234,7 +257,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         pid0 = abs(dc.ids[0])
         pid1 = abs(dc.ids[1])
 
-        if pid0 == 1000022: # N3 -> N1
+        if pid0 == 1000022:   # N3 -> N1
             br_n3_n1 += dc.br
         elif pid0 == 1000023: # N3 -> N2
             br_n3_n2 += dc.br
@@ -252,6 +275,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         mu,
         msq,
         tanb,
+        at,
 
         # masses
         m_h,
@@ -263,6 +287,14 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         m_c1,
         m_c2,
         m_G,
+
+        lsp,
+        nlsp,
+
+        # decay length
+        gl_length,
+        n1_length,
+        n2_length,
 
         # BR
         br_gl_n1g,
