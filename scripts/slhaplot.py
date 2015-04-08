@@ -51,7 +51,7 @@ labels = {
 }
 
 
-def slhaplot(filename, x, y=None, z=None, outname='x.pdf'):
+def slhaplot(filename, x, y=None, z=None, selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
 
     set_default_style()
 
@@ -72,7 +72,7 @@ def slhaplot(filename, x, y=None, z=None, outname='x.pdf'):
     else:
         varstr = '%s>>htmp' % x
 
-    tree.Draw(varstr, '', 'col goff')
+    tree.Draw(varstr, selection, 'col goff')
 
     hist = ROOT.gDirectory.Get('htmp')
 
@@ -83,25 +83,26 @@ def slhaplot(filename, x, y=None, z=None, outname='x.pdf'):
 
     if y is not None:
         hist.GetYaxis().SetTitle(labels.get(y, y))
+        hist.GetYaxis().SetTitleOffset(1.5)
 
     if z is not None:
         hist.GetZaxis().SetTitle(labels.get(z, z))
-        hist.GetZaxis().SetTitleOffset(1.6)
+        hist.GetZaxis().SetTitleOffset(1.5)
 
-    # nrows = tree.GetSelectedRows();
-    # v1 = tree.GetV1()
-    # v2 = tree.GetV2()
-    # v3 = tree.GetV3()
+    if xmin is not None and xmax is not None:
+        hist.GetXaxis().SetRangeUser(xmin, xmax)
 
-    # if nselect == 0:
-    #     return 0;
+    if ymin is not None and ymax is not None:
+        hist.GetYaxis().SetRangeUser(ymin, ymax)
 
-    # print v1
-    #gr = ROOT.TGraph2D(nrows, v3, v2, v1);
+    if zmin is not None and zmax is not None:
+        hist.GetZaxis().SetRangeUser(zmin, zmax)
 
-    c = ROOT.TCanvas('', '', 800,800)
 
-    c.SetRightMargin(0.17)
+
+    c = ROOT.TCanvas('', '', 800, 800)
+
+    c.SetRightMargin(0.16)
 
     hist.Draw('colz')
     c.SaveAs(outname)
