@@ -114,6 +114,10 @@ def main():
 
     try:
         execfile(args.configfile, globals())
+
+        # check needed vectors
+        v_M1, v_mu, v_M3, v_At, v_Gmass, v_Msq, v_tanbeta
+
     except:
         print 'Error in the configile. exit...'
         sys.exit(1)
@@ -146,6 +150,15 @@ def main():
     useFixedMu = True
     useMuPositive = True
 
+    def default_filter_fn(at, tanb, msq, m3, m1, mu, Gmass):
+        pass
+
+    try:
+        filter_fn_copy = filter_fn
+    except:
+        print 'No filter function defined in config file'
+        filter_fn_copy = default_filter_fn
+
     # Count total jobs
     njobs = 0
     for at in v_At:
@@ -155,8 +168,7 @@ def main():
                     for m1 in v_M1:
                         for mu in v_mu:
                             for Gmass in v_Gmass:
-                                # make sure that the (aprox) M(chi10) is greater than M(gluino)
-                                if mu > m3 or mu > msq:
+                                if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
                                     continue
 
                                 njobs += 1
@@ -190,9 +202,7 @@ def main():
                     for m1 in v_M1:
                         for mu in v_mu:
                             for Gmass in v_Gmass:
-
-                                # make sure that the (aprox) M(chi10) is greater than M(gluino)
-                                if mu > m3 or mu > msq:
+                                if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
                                     continue
 
                                 if (progress % 1000) == 0:
