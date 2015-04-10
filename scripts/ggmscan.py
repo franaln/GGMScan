@@ -107,10 +107,10 @@ def main():
 
     parser.add_argument('-c', dest='configfile', required=True, help='Configfile')
     parser.add_argument('-o', dest='outputdir', help='Output directory')
-    parser.add_argument('-n', dest='ncores', type=int, default=1, help='Cores to use')
+    #parser.add_argument('-n', dest='ncores', type=int, default=1, help='Cores to use')
+    parser.add_argument('--count', action='store_true', help='Count number of jobs')
 
     args = parser.parse_args()
-
 
     try:
         execfile(args.configfile, globals())
@@ -122,33 +122,6 @@ def main():
         print 'Error in the configile. exit...'
         sys.exit(1)
 
-    # Run directory
-    if args.outputdir is None:
-        t = datetime.datetime.now()
-        datestr = '%s-%s-%s_%s.%s.%s' % (t.year, t.month, t.day, t.hour, t.minute, t.second)
-
-        run_dir = 'SusyGridRun_%s' % datestr
-        os.system('mkdir -p %s' % run_dir)
-
-    else:
-        run_dir = args.outputdir
-
-        if not os.path.exists(run_dir):
-            os.system('mkdir -p %s' % run_dir)
-
-
-    # Copy SUSYHIT executables
-    shutil.copy2(os.environ['SUSYGRID'] + '/SuSpect/suspect2', '%s/suspect2' % run_dir)
-    shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/run', '%s/runSUSYHIT' % run_dir)
-    shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/susyhit.in', '%s/susyhit.in' % run_dir)
-
-    os.chdir(run_dir)
-
-
-    # SUSYHIT scan
-    useM1muRelation = False
-    useFixedMu = True
-    useMuPositive = True
 
     def default_filter_fn(at, tanb, msq, m3, m1, mu, Gmass):
         pass
@@ -172,6 +145,31 @@ def main():
                                     continue
 
                                 njobs += 1
+
+    if args.count:
+        print 'Number of jobs: %i' % njobs
+        sys.exit(1)
+
+    # Run directory
+    if args.outputdir is None:
+        t = datetime.datetime.now()
+        datestr = '%s-%s-%s_%s.%s.%s' % (t.year, t.month, t.day, t.hour, t.minute, t.second)
+
+        run_dir = 'SusyGridRun_%s' % datestr
+        os.system('mkdir -p %s' % run_dir)
+
+    else:
+        run_dir = args.outputdir
+
+        if not os.path.exists(run_dir):
+            os.system('mkdir -p %s' % run_dir)
+
+    # Copy SUSYHIT executables
+    shutil.copy2(os.environ['SUSYGRID'] + '/SuSpect/suspect2', '%s/suspect2' % run_dir)
+    shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/run', '%s/runSUSYHIT' % run_dir)
+    shutil.copy2(os.environ['SUSYGRID'] + '/SUSYHIT/susyhit.in', '%s/susyhit.in' % run_dir)
+
+    os.chdir(run_dir)
 
     # Check scan status
     slha_files = glob.glob('at*.slha')
