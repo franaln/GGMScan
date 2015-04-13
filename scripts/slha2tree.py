@@ -33,7 +33,7 @@ def get_slha_files(dir_):
 
         elif os.path.isfile(path) and fname.endswith('.slha'):
             yield path
-        
+
 
 # Output file and output tree
 output_file = ROOT.TFile(args.output_file, 'recreate')
@@ -47,7 +47,7 @@ variables = [
     'mu',
     'msq',
     'tanb',
-    'at', 
+    'at',
 
     # masses
     'm_h',
@@ -110,7 +110,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         doc = pyslha.read(infile)
         BLOCKS, DECAYS = doc.blocks, doc.decays
     except pyslha.ParseError, pe:
-        print str(pe) + "... exiting"
+        print str(pe) + " (%s) ... exiting" % infile
         sys.exit(1)
 
 
@@ -140,7 +140,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     m_G  = masses[1000039]
 
     sorted_masses = sorted(masses.keys(), key=masses.get)
-    sparticles = [i for i in sorted_masses if i>1000000] 
+    sparticles = [i for i in sorted_masses if i>1000000]
 
     lsp  = sparticles[0]
     nlsp = sparticles[1]
@@ -150,7 +150,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     hbar = 6.582E-25  # GeV.s
     cspeed = 2.99792458E8 #m.s
 
-    
+
 
     ## gluino decays
     gluino = DECAYS[1000021]

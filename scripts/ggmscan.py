@@ -148,6 +148,7 @@ def main():
 
     if args.count:
         print 'Number of jobs: %i' % njobs
+        #print 'Aprox. time (at 1 Hz): %s days, %s hours, %s minutes, %s seconds' % (
         sys.exit(1)
 
     # Run directory
@@ -172,7 +173,7 @@ def main():
     os.chdir(run_dir)
 
     # Check scan status
-    slha_files = glob.glob('at*.slha')
+    slha_files = glob.glob('at*.slha') + glob.glob('0/at*.slha')
 
     if len(slha_files) > 0:
         done_files = filter(os.path.isfile, slha_files)

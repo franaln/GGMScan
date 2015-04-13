@@ -403,6 +403,38 @@ def normalize_hist(h):
     if area > 0:
         h.Scale(1/area)
 
+def sort_graph(g):
+
+    ax = array('f', [])
+    ay = array('f', [])
+
+    d = dict()
+    for i in xrange(g.GetN()):
+
+        xtmp = ROOT.Double(0)
+        ytmp = ROOT.Double(0)
+
+        g.GetPoint(i, xtmp, ytmp)
+        d[xtmp] = ytmp
+
+    for x, y in sorted(d.iteritems()):
+        ax.append(x)
+        ay.append(y)
+
+    return ROOT.TGraph(g.GetN(), ax, ay)
+
+
+def draw_latex(x, y, text, size=None, ndc=False):
+    l = ROOT.TLatex(x, y, text)
+    ROOT.SetOwnership(l, False)
+
+    if ndc:
+        l.SetNDC()
+
+    if size is not None:
+        l.SetTextSize(size)
+
+    l.Draw()
 
 #-- Style --
 colourdict = {

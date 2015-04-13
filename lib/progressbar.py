@@ -22,6 +22,10 @@ class ProgressBar:
             if i % self.increment == 0:
                 self.current_progress += 1
 
+        self.last_event = 0
+        self.last_time = time.time()
+
+
     def print_bar(self, event):
 
         if event > self.total:
@@ -32,16 +36,14 @@ class ProgressBar:
 
         if event % self.check_each_evts == 0:
             pass
-        # else:
-        #     return
+        else:
+            return
 
-        elapsed_time = time.time() - self.start_time
+        rate = self.get_rate(event)
+        remaining_time = self.get_remaining_time(event, rate)
 
         self.last_time = time.time()
         self.last_event = event
-
-        rate = self.get_rate(event, elapsed_time)
-        remaining_time = self.get_remaining_time(event, rate)
 
         unit = 0
         while (rate >= 1.e3 and unit < 3):
@@ -82,12 +84,12 @@ class ProgressBar:
         sys.stdout.write('\r')
         sys.stdout.flush()
 
-    def get_rate(self, event, elapsed_time):
+    def get_rate(self, event):
 
         if event == 0:
             return 0
 
-        rate = (event-self.done)/elapsed_time
+        rate = (event-self.last_event)/(time.time() - self.last_time)
 
         return rate
 
