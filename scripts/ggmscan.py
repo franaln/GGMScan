@@ -100,6 +100,8 @@ Block EXTPAR                 # Input parameters
     InFile.close()
 
 
+
+
 ##--
 def main():
 
@@ -107,8 +109,9 @@ def main():
 
     parser.add_argument('-c', dest='configfile', required=True, help='Configfile')
     parser.add_argument('-o', dest='outputdir', help='Output directory')
-    #parser.add_argument('-n', dest='ncores', type=int, default=1, help='Cores to use')
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
+
+    parser.add_argument('--usem1murel', action='store_true', help='Use M1/mu relation')
 
     args = parser.parse_args()
 
@@ -116,12 +119,14 @@ def main():
         execfile(args.configfile, globals())
 
         # check needed vectors
-        v_M1, v_mu, v_M3, v_At, v_Gmass, v_Msq, v_tanbeta
+        v_mu, v_M3, v_At, v_Gmass, v_Msq, v_tanbeta, v_M1
+
+        if args.usem1murel:
+            rel_m1mu
 
     except:
         print 'Error in the configile. exit...'
         sys.exit(1)
-
 
     def default_filter_fn(at, tanb, msq, m3, m1, mu, Gmass):
         pass
@@ -132,13 +137,18 @@ def main():
         print 'No filter function defined in config file'
         filter_fn_copy = default_filter_fn
 
+    if args.usem1murel:
+        v_M1_copy = [-99,]
+    else:
+        v_M1_copy = v_M1
+
     # Count total jobs
     njobs = 0
     for at in v_At:
         for tanb in v_tanbeta:
             for msq in v_Msq:
                 for m3 in v_M3:
-                    for m1 in v_M1:
+                    for m1 in v_M1_copy:
                         for mu in v_mu:
                             for Gmass in v_Gmass:
                                 if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
@@ -148,7 +158,6 @@ def main():
 
     if args.count:
         print 'Number of jobs: %i' % njobs
-        #print 'Aprox. time (at 1 Hz): %s days, %s hours, %s minutes, %s seconds' % (
         sys.exit(1)
 
     # Run directory
@@ -187,10 +196,32 @@ def main():
         done_files = []
 
     # SUSY-HIT: generate SLHA files one by one
+    def generate_slha(at, tanb, msq, m3, m1, mu, Gmass):
+
+        outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
+
+        # Create Suspect input
+        writeSuspectPar(m1, m3, mu, msq, at, tanb)
+
+        # Run Suspect
+        os.system('./suspect2 > /dev/null')
+
+        # Copy Suspect output to SUSYHIT input
+        os.system('mv suspect2_lha.out slhaspectrum.in')
+
+        # hack MODSEL (to make it 'look like' GMSB)
+        os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
+
+        # add the gravitino by hand!
+        os.system('AddGravitino slhaspectrum.in 1E-9')
+
+        # Run SUSYHIT
+        os.system('./runSUSYHIT > /dev/null')
+
+        os.system('mv susyhit_slha.out %s' % os.path.join(outdir, outfile))
+
     bar = ProgressBar(njobs, len(done_files))
 
-    # pool = multiprocessing.Pool(processes=args.ncores)
-    # jobs = []
     outdir = '.'
 
     progress = len(done_files) + 1
@@ -198,58 +229,31 @@ def main():
         for tanb in v_tanbeta:
             for msq in v_Msq:
                 for m3 in v_M3:
-                    for m1 in v_M1:
+                    for m1 in v_M1_copy:
                         for mu in v_mu:
                             for Gmass in v_Gmass:
                                 if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
                                     continue
 
-                                if (progress % 1000) == 0:
-                                    outdir = '%i' % (progress % 1000)
-                                    os.system('mkdir -p %s' % outdir)
+                                # if (progress % 1000) == 0:
+                                #     outdir = '%i' % (progress % 1000)
+                                #     os.system('mkdir -p %s' % outdir)
+
+                                if args.usem1murel:
+                                    m1 = rel_m1mu(mu)
 
                                 outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
 
                                 if outfile in done_files:
                                     continue
 
-                                # pool.apply(worker, args=(progress, m1, m3, mu, at, tanbeta, Gmass,))
-                                #worker(progress, at, tanb, msq, m3, m1, mu, Gmass)
-
-                                # Create Suspect input
-                                writeSuspectPar(m1, m3, mu, msq, at, tanb)
-
-                                # Run Suspect
-                                #log.write('Running Suspect\n')
-                                os.system('./suspect2 > /dev/null')
-
-                                # Copy Suspect output to SUSYHIT input
-                                os.system('mv suspect2_lha.out slhaspectrum.in')
-
-                                # hack MODSEL (to make it 'look like' GMSB)
-                                os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
-
-                                # add the gravitino by hand!
-                                os.system('AddGravitino slhaspectrum.in 1E-9')
-
-                                # Fix Higgs mass (if needed)
-                                # if [ "$customHmass" -eq 1 ];then
-                                #     ./FixHiggs slhaspectrum.in $Hmass
-                                # fi
-
-                                # Run SUSYHIT
-                                #log.write('Running SUSYHIT\n')
-                                os.system('./runSUSYHIT > /dev/null')
-
-                                os.system('mv susyhit_slha.out %s' % os.path.join(outdir, outfile))
+                                generate_slha(at, tanb, msq, m3, m1, mu, Gmass)
 
                                 bar.print_bar(progress)
                                 progress += 1
 
 
 # end of loops
-
-# pool.close()
 
 if __name__ == '__main__':
     main()
