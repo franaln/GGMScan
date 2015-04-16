@@ -10,13 +10,14 @@ import datetime
 import argparse
 import multiprocessing
 from progressbar import ProgressBar
+import pyslha
 
 ## Suspect
 def writeSuspectPar(m1, m3, mu, msq, at, tanbeta):
 
     #arguments: M1, M3, mu, At
     Msf12 = 2.5E+03
-    Msf3 = 2.5E+03
+    Msf3  = 2.5E+03
 
     # inputs remaining constant through the scan:
     SLHAInputTemplate = string.Template("""\
@@ -44,9 +45,9 @@ Block SU_ALGO  # !Optional SUSPECT v>=2.3* block: algorithm control parameters
 #          POLE          Higgs masses at loop-level at mZ             : 1
 Block SMINPUTS               # Standard Model inputs
    1     1.27932904E+02  # alpha_em^-1(MZ)^MSbar
-#   2     1.16639000E-05  # G_mu [GeV^-2]
+#  2     1.16639000E-05  # G_mu [GeV^-2]
    3     1.17200000E-01  # alpha_s(MZ)^MSbar
-#   4     9.11876000E+01  # m_Z(pole)
+#  4     9.11876000E+01  # m_Z(pole)
    5     4.25000000E+00  # m_b(m_b), MSbar
    6     1.72900000E+02  # m_t(pole)
    7     1.77700000E+00  # m_tau(pole)
@@ -55,7 +56,8 @@ Block MINPAR                 # Input parameters
 Block EXTPAR                 # Input parameters
    0     9.11876000E+01   # EWSB_scale
    1     ${M1}      # M_1
-   2     2.5E+03    # M_2
+#   2     2.5E+03    # M_2
+   2     4.0E+03    # M_2
    3     ${M3}      # M_3
    11    ${At}      # A_t
    12    0.00E+00   # A_b
@@ -111,7 +113,11 @@ def main():
     parser.add_argument('-o', dest='outputdir', help='Output directory')
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
 
-    parser.add_argument('--usem1murel', action='store_true', help='Use M1/mu relation')
+
+    parser.add_argument('--scan', action='store_true', help='Scan')
+    parser.add_argument('--m1mu', action='store_true', help='Find best m1/mu relation')
+    parser.add_argument('--grid', action='store_true', help='Create grid: use M1/mu dict relation')
+
 
     args = parser.parse_args()
 
@@ -121,12 +127,12 @@ def main():
         # check needed vectors
         v_mu, v_M3, v_At, v_Gmass, v_Msq, v_tanbeta, v_M1
 
-        if args.usem1murel:
-            rel_m1mu
+        if args.grid:
+            m1mu_dict
 
     except:
         print 'Error in the configile. exit...'
-        sys.exit(1)
+        raise
 
     def default_filter_fn(at, tanb, msq, m3, m1, mu, Gmass):
         pass
@@ -137,7 +143,7 @@ def main():
         print 'No filter function defined in config file'
         filter_fn_copy = default_filter_fn
 
-    if args.usem1murel:
+    if args.grid:
         v_M1_copy = [-99,]
     else:
         v_M1_copy = v_M1
@@ -220,40 +226,124 @@ def main():
 
         os.system('mv susyhit_slha.out %s' % os.path.join(outdir, outfile))
 
-    bar = ProgressBar(njobs, len(done_files))
+
 
     outdir = '.'
 
-    progress = len(done_files) + 1
-    for at in v_At:
-        for tanb in v_tanbeta:
-            for msq in v_Msq:
-                for m3 in v_M3:
-                    for m1 in v_M1_copy:
-                        for mu in v_mu:
-                            for Gmass in v_Gmass:
-                                if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
-                                    continue
+    if args.scan or args.grid:
 
-                                # if (progress % 1000) == 0:
-                                #     outdir = '%i' % (progress % 1000)
-                                #     os.system('mkdir -p %s' % outdir)
+        bar = ProgressBar(njobs, len(done_files))
 
-                                if args.usem1murel:
-                                    m1 = rel_m1mu(mu)
+        progress = len(done_files) + 1
+        for at in v_At:
+            for tanb in v_tanbeta:
+                for msq in v_Msq:
+                    for m3 in v_M3:
+                        for m1 in v_M1_copy:
+                            for mu in v_mu:
+                                for Gmass in v_Gmass:
+                                    if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
+                                        continue
 
-                                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
+                                    if args.grid:
+                                        m1 = m1mu_dict.get(mu)
 
-                                if outfile in done_files:
-                                    continue
+                                    outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
 
-                                generate_slha(at, tanb, msq, m3, m1, mu, Gmass)
+                                    if outfile in done_files:
+                                        continue
 
-                                bar.print_bar(progress)
-                                progress += 1
+                                    generate_slha(at, tanb, msq, m3, m1, mu, Gmass)
+
+                                    ##
+                                    masses = pyslha.read(outfile).blocks['MASS']
+                                    m_gl = masses[1000021]
+                                    m_n1 = masses[1000022]
+
+                                    if m_n1 > m_gl:
+                                        os.system('rm %s' % outfile)
 
 
-# end of loops
+                                    bar.print_bar(progress)
+                                    progress += 1
+        # end of loops
+
+
+    # Find M1/mu relation using bisection method :D
+    if args.m1mu:
+
+        at = v_At[0]
+        tanb = v_tanbeta[0]
+        msq = v_Msq[0]
+        m3 = v_M3[0]
+        Gmass = v_Gmass[0]
+
+        m1_min = v_M1[0]
+        m1_max = v_M1[-1]
+
+        for mu in v_mu:
+
+            print 'Processing mu =', mu
+
+            m1_a = m1_min
+            m1_b = m1_max
+
+            br_p = 99
+
+            while abs(br_p) > 0.005:
+
+                m1_p = (m1_a + m1_b) / 2
+
+                # A
+                generate_slha(at, tanb, msq, m3, m1_a, mu, Gmass)
+
+                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1_a, mu, Gmass)
+
+                br_n1_Gy = 0
+                for dc in pyslha.read(outfile).decays[1000022].decays:
+                    if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22: # chi01 -> ~G y
+                        br_n1_Gy += dc.br
+
+                br_a  = br_n1_Gy - 0.5
+
+                # B
+                generate_slha(at, tanb, msq, m3, m1_b, mu, Gmass)
+
+                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1_b, mu, Gmass)
+
+                br_n1_Gy = 0
+                for dc in pyslha.read(outfile).decays[1000022].decays:
+                    if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22: # chi01 -> ~G y
+                        br_n1_Gy += dc.br
+
+                br_b  = br_n1_Gy - 0.5
+
+                # P
+                generate_slha(at, tanb, msq, m3, m1_p, mu, Gmass)
+
+                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1_p, mu, Gmass)
+
+                br_n1_Gy = 0
+                for dc in pyslha.read(outfile).decays[1000022].decays:
+                    if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22: # chi01 -> ~G y
+                        br_n1_Gy += dc.br
+
+                br_p  = br_n1_Gy - 0.5
+
+                ###
+                if br_a * br_p < 0:
+                    m1_a = m1_a
+                else:
+                    m1_a = m1_p
+
+                if br_b * br_p < 0:
+                    m1_b = m1_b
+                else:
+                    m1_b = m1_p
+
+            print 'best m1 =', m1_p
+
+
 
 if __name__ == '__main__':
     main()
