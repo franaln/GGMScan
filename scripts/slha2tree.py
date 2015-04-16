@@ -111,7 +111,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         BLOCKS, DECAYS = doc.blocks, doc.decays
     except pyslha.ParseError, pe:
         print str(pe) + " (%s) ... exiting" % infile
-        sys.exit(1)
+        continue
 
 
     ## SUSY parameters
