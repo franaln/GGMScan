@@ -113,7 +113,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         print str(pe) + " (%s) ... exiting" % infile
         continue
 
-
     ## SUSY parameters
     params = BLOCKS['EXTPAR']
 
@@ -180,7 +179,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
             elif (pid1 > 0 and pid1 < 9) and (pid2 > 0 and pid2 < 9):
                 br_gl_n1qq += dc.br
 
-        if pid0 == 1000023: # ~g -> chi02 X
+        elif pid0 == 1000023: # ~g -> chi02 X
             if pid1 == 21:
                 br_gl_n2g += dc.br
             elif (pid1 > 0 and pid1 < 9) and (pid2 > 0 and pid2 < 9):
