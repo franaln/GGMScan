@@ -16,8 +16,8 @@ import pyslha
 def writeSuspectPar(m1, m3, mu, msq, at, tanbeta):
 
     #arguments: M1, M3, mu, At
-    Msf12 = 2.5E+03
-    Msf3  = 2.5E+03
+    Msf12 = msq #5E+03
+    Msf3  = msq #5E+03
 
     # inputs remaining constant through the scan:
     SLHAInputTemplate = string.Template("""\
@@ -56,8 +56,7 @@ Block MINPAR                 # Input parameters
 Block EXTPAR                 # Input parameters
    0     9.11876000E+01   # EWSB_scale
    1     ${M1}      # M_1
-#   2     2.5E+03    # M_2
-   2     4.0E+03    # M_2
+   2     5.0E+03    # M_2
    3     ${M3}      # M_3
    11    ${At}      # A_t
    12    0.00E+00   # A_b
@@ -103,7 +102,6 @@ Block EXTPAR                 # Input parameters
 
 
 
-
 ##--
 def main():
 
@@ -113,10 +111,12 @@ def main():
     parser.add_argument('-o', dest='outputdir', help='Output directory')
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
 
+    parser.add_argument('-v', '--verbose', action='store_true', help='verbose')
 
     parser.add_argument('--scan', action='store_true', help='Scan')
     parser.add_argument('--m1mu', action='store_true', help='Find best m1/mu relation')
     parser.add_argument('--grid', action='store_true', help='Create grid: use M1/mu dict relation')
+    parser.add_argument('--tunemu', action='store_true', help='Tune mu using bisection method')
 
 
     args = parser.parse_args()
@@ -128,7 +128,8 @@ def main():
         v_mu, v_M3, v_At, v_Gmass, v_Msq, v_tanbeta, v_M1
 
         if args.grid:
-            m1mu_dict
+            m3mu_dict
+            mum1_dict
 
     except:
         print 'Error in the configile. exit...'
@@ -202,15 +203,22 @@ def main():
         done_files = []
 
     # SUSY-HIT: generate SLHA files one by one
-    def generate_slha(at, tanb, msq, m3, m1, mu, Gmass):
+    def generate_slha(at, tanb, msq, m3, m1, mu, Gmass, outfile=None):
 
-        outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
+        if outfile is None:
+            outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
+
+        if outfile in os.listdir('.'):
+            return outfile
 
         # Create Suspect input
         writeSuspectPar(m1, m3, mu, msq, at, tanb)
 
         # Run Suspect
-        os.system('./suspect2 > /dev/null')
+        st = os.system('./suspect2 > /dev/null')
+
+        if st != 0:
+            return None
 
         # Copy Suspect output to SUSYHIT input
         os.system('mv suspect2_lha.out slhaspectrum.in')
@@ -219,18 +227,19 @@ def main():
         os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
 
         # add the gravitino by hand!
-        os.system('AddGravitino slhaspectrum.in 1E-9')
+        os.system('AddGravitino slhaspectrum.in %s' % Gmass)
 
         # Run SUSYHIT
         os.system('./runSUSYHIT > /dev/null')
 
         os.system('mv susyhit_slha.out %s' % os.path.join(outdir, outfile))
 
+        return outfile
 
 
     outdir = '.'
 
-    if args.scan or args.grid:
+    if args.scan:
 
         bar = ProgressBar(njobs, len(done_files))
 
@@ -245,8 +254,8 @@ def main():
                                     if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
                                         continue
 
-                                    if args.grid:
-                                        m1 = m1mu_dict.get(mu)
+                                    # if args.grid:
+                                    #     m1 = m1mu_dict.get(mu)
 
                                     outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
 
@@ -270,6 +279,95 @@ def main():
 
 
     # Find M1/mu relation using bisection method :D
+    def get_br_n1_Gy(slhafile):
+        br_n1_Gy = 0
+        for dc in pyslha.read(slhafile).decays[1000022].decays:
+            if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22:
+                br_n1_Gy += dc.br
+
+        return br_n1_Gy
+
+    if args.grid:
+
+        at = v_At[0]
+        tanb = v_tanbeta[0]
+        msq = v_Msq[0]
+        Gmass = v_Gmass[0]
+
+        for m3, mulist in m3mu_dict.iteritems():
+
+            for mu in mulist:
+
+                factor = (1E-07/(float(m3)-150))*(float(mu)-150)
+                Gmass = 1E-09 + (1E-07/(float(m3)-150))*(float(mu)-150)
+
+                m1 = mum1_dict.get(mu)
+
+                outfile = 'm3_%s_m1_%s_mu_%s.slha' % (m3, m1, mu)
+
+                outfile = generate_slha(at, tanb, msq, m3, m1, mu, Gmass, outfile=outfile)
+
+                print outfile
+                print get_br_n1_Gy(outfile)
+
+
+        # end of loops
+
+
+
+    def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, precision=0.005):
+
+        if args.verbose:
+            print 'find best m1 for m3 = %f, mu = %f with below %f %%' % (m3, mu, precision*100)
+
+        m1_a = m1_min
+        m1_b = m1_max
+
+        br_p = 99
+
+        iteration = 0
+
+        while abs(br_p) > precision and iteration < 100:
+
+            m1_p = (m1_a + m1_b) / 2
+
+            # A
+            outfile = generate_slha(at, tanb, msq, m3, m1_a, mu, Gmass)
+
+            br_n1_Gy = get_br_n1_Gy(outfile)
+
+            br_a = br_n1_Gy - 0.5
+
+            # B
+            outfile = generate_slha(at, tanb, msq, m3, m1_b, mu, Gmass)
+
+            br_n1_Gy = get_br_n1_Gy(outfile)
+
+            br_b = br_n1_Gy - 0.5
+
+            # P
+            outfile = generate_slha(at, tanb, msq, m3, m1_p, mu, Gmass)
+
+            br_n1_Gy = get_br_n1_Gy(outfile)
+
+            br_p = br_n1_Gy - 0.5
+
+            ###
+            if br_a * br_p < 0:
+                m1_a = m1_a
+            else:
+                m1_a = m1_p
+
+            if br_b * br_p < 0:
+                m1_b = m1_b
+            else:
+                m1_b = m1_p
+
+            iteration += 1
+
+        return m1_p, br_n1_Gy
+
+
     if args.m1mu:
 
         at = v_At[0]
@@ -285,63 +383,85 @@ def main():
 
             print 'Processing mu =', mu
 
-            m1_a = m1_min
-            m1_b = m1_max
+            best_m1, best_br = find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max)
 
-            br_p = 99
+            print 'best m1 = %f with BR(N1->~Gy) = %f' % (best_m1, best_br)
 
-            while abs(br_p) > 0.005:
 
-                m1_p = (m1_a + m1_b) / 2
+    ## Diagonal
+    # at = v_At[0]
+    # tanb = v_tanbeta[0]
+    # msq = v_Msq[0]
+    # Gmass = v_Gmass[0]
 
-                # A
-                generate_slha(at, tanb, msq, m3, m1_a, mu, Gmass)
+    # m1_min = 10
+    # m1_max = 2000
 
-                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1_a, mu, Gmass)
+    # mu_min = v_mu[0]
+    # mu_max = v_mu[-1]
 
-                br_n1_Gy = 0
-                for dc in pyslha.read(outfile).decays[1000022].decays:
-                    if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22: # chi01 -> ~G y
-                        br_n1_Gy += dc.br
 
-                br_a  = br_n1_Gy - 0.5
+    # def F(slhafile):
+    #     try:
+    #         masses = pyslha.read(slhafile).blocks['MASS']
 
-                # B
-                generate_slha(at, tanb, msq, m3, m1_b, mu, Gmass)
+    #         m_gl = masses[1000021]
+    #         m_n1 = masses[1000022]
 
-                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1_b, mu, Gmass)
+    #         return (m_gl - m_n1 - 20)
+    #     except:
+    #         return 10000
 
-                br_n1_Gy = 0
-                for dc in pyslha.read(outfile).decays[1000022].decays:
-                    if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22: # chi01 -> ~G y
-                        br_n1_Gy += dc.br
+    # for m3 in v_M3:
 
-                br_b  = br_n1_Gy - 0.5
+    #     mu_a = m3-200
+    #     mu_b = m3+200
 
-                # P
-                generate_slha(at, tanb, msq, m3, m1_p, mu, Gmass)
+    #     F_p = 99
 
-                outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1_p, mu, Gmass)
+    #     while abs(F_p) > 5:
 
-                br_n1_Gy = 0
-                for dc in pyslha.read(outfile).decays[1000022].decays:
-                    if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22: # chi01 -> ~G y
-                        br_n1_Gy += dc.br
+    #         print 'Processing m3 = %i, mu between %f and %f, F(p) = %f' % (m3, mu_a, mu_b, F_p)
 
-                br_p  = br_n1_Gy - 0.5
+    #         mu_p = (mu_a + mu_b) / 2
 
-                ###
-                if br_a * br_p < 0:
-                    m1_a = m1_a
-                else:
-                    m1_a = m1_p
+    #         # A
+    #         mu = mu_a
+    #         m1 = find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, 0.1)
 
-                if br_b * br_p < 0:
-                    m1_b = m1_b
-                else:
-                    m1_b = m1_p
+    #         outfile = generate_slha(at, tanb, msq, m3, m1, mu, Gmass)
 
-            print 'best m1 =', m1_p
+    #         F_a = F(outfile)
+
+    #         # B
+    #         mu = mu_b
+    #         m1 = find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, 0.1)
+
+    #         outfile = generate_slha(at, tanb, msq, m3, m1, mu, Gmass)
+
+    #         F_b = F(outfile)
+
+    #         # P
+    #         mu = mu_p
+    #         m1 = find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, 0.1)
+
+    #         outfile = generate_slha(at, tanb, msq, m3, m1, mu, Gmass)
+
+    #         F_p = F(outfile)
+
+    #         ###
+    #         if F_a * F_p < 0:
+    #             mu_a = mu_a
+    #         else:
+    #             mu_a = mu_p
+
+    #         if F_b * F_p < 0:
+    #             mu_b = mu_b
+    #         else:
+    #             mu_b = mu_p
+
+    #     print 'm3 =', m3, ' best mu =', mu_p, 'best m1 =', m1
+
 
 
 
