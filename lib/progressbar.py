@@ -25,11 +25,14 @@ class ProgressBar:
         self.last_event = 0
         self.last_time = time.time()
 
+    def __del__(self):
+        sys.stdout.write('\n')
+        sys.stdout.flush()
 
     def print_bar(self, event):
 
         if event > self.total:
-            event = event % self.total
+            return ##event = self.total
 
         if event % self.increment == 0:
             self.current_progress += 1
@@ -72,12 +75,12 @@ class ProgressBar:
         bar += " (%i%%) | %s | %s remaining"  %  (perc, rate_str, remaining_time)
 
         # Add new line (only for last line in fancy draw mode)
-        if event == self.total:
-            bar += '\n'
+        # if event == self.total:
+        #     bar += '\n'
 
         # Print to screen
-        self.clear_line()
-        sys.stdout.write(bar)
+        #self.clear_line()
+        sys.stdout.write(bar+'\n')
         sys.stdout.flush()
 
     def clear_line(self):
@@ -122,7 +125,7 @@ class ProgressBar:
         return remaining_time_str
 
 
-def test():
+if __name__ == '__main__':
     import sys
 
     if len(sys.argv) > 2:
@@ -139,6 +142,3 @@ def test():
     for i in xrange(done, total):
         time.sleep(0.1)
         pb.print_bar(i+1)
-
-if __name__ == '__main__':
-    test()
