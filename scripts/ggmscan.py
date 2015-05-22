@@ -12,16 +12,26 @@ from progressbar import ProgressBar
 import pyslha
 
 
-def get_br_n1_Gy(slhafile):
-    br_n1_Gy = 0
+def get_br(slhafile, br_to='Gy'):
+
+    br = 0
+
     for dc in pyslha.read(slhafile).decays[1000022].decays:
-        if abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22:
-            br_n1_Gy += dc.br
 
-    return br_n1_Gy
+        if br_to == 'Gy' and abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22:
+            br += dc.br
+
+        if br_to == 'GZ' and abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 23:
+            br += dc.br
+
+        if br_to == 'Gh' and abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 25:
+            br += dc.br
 
 
-def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, precision=0.005):
+    return br
+
+
+def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, br_to='Gy', br_eq=0.5, precision=0.005):
 
     """
     Find M1/mu relation using bisection method :D
@@ -42,25 +52,25 @@ def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, precision=0.005):
         m1_p = (m1_a + m1_b) / 2
 
         # A
-        outfile = susyhituitls.generate_slha(at, tanb, msq, m3, m1_a, mu, Gmass)
+        outfile = susyhitutils.generate_slha(at, tanb, msq, m3, m1_a, mu, Gmass)
 
-        br_n1_Gy = get_br_n1_Gy(outfile)
+        br = get_br(outfile, br_to)
 
-        br_a = br_n1_Gy - 0.5
+        br_a = br - br_eq
 
         # B
-        outfile = susyhituitls.generate_slha(at, tanb, msq, m3, m1_b, mu, Gmass)
+        outfile = susyhitutils.generate_slha(at, tanb, msq, m3, m1_b, mu, Gmass)
 
-        br_n1_Gy = get_br_n1_Gy(outfile)
+        br = get_br(outfile, br_to)
 
-        br_b = br_n1_Gy - 0.5
+        br_b = br - br_eq
 
         # P
-        outfile = susyhituitls.generate_slha(at, tanb, msq, m3, m1_p, mu, Gmass)
+        outfile = susyhitutils.generate_slha(at, tanb, msq, m3, m1_p, mu, Gmass)
 
-        br_n1_Gy = get_br_n1_Gy(outfile)
+        br_n1_Gy = get_br(outfile, br_to)
 
-        br_p = br_n1_Gy - 0.5
+        br_p = br - br_eq
 
         ###
         if br_a * br_p < 0:
@@ -75,7 +85,7 @@ def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, precision=0.005):
 
         iteration += 1
 
-    return m1_p, br_n1_Gy
+    return m1_p, br
 
 
 ##--
@@ -86,9 +96,13 @@ def main():
     parser.add_argument('-c', dest='configfile', required=True, help='Configfile')
     parser.add_argument('-o', dest='outputdir', help='Output directory')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose')
+
+
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
-    parser.add_argument('--scan', action='store_true', help='Scan')
-    #parser.add_argument('--m1mu', action='store_true', help='Find best m1/mu relation')
+    parser.add_argument('--scan', action='store_true', help='Do parameters scan')
+    parser.add_argument('--m1mu', action='store_true', help='Find best m1/mu relation')
+
+    parser.add_argument('--tune', help='Tune M1 to get desired N1->X BRs: br_n1_Gy=0.5 (example)')
 
     global args
     args = parser.parse_args()
@@ -189,11 +203,34 @@ def main():
         # end of loops
         print '%i files removed beacuse m_n1 > m_gl' % rm_files
 
+
+
+    if args.tune:
+
+        br_to, br_eq = args.tune.split('=')
+
+        br_eq = float(br_eq)
+
+        at = v_At[0]
+        tanb = v_tanbeta[0]
+        msq = v_Msq[0]
+        m3 = v_M3[0]
+        Gmass = v_Gmass[0]
+
+        m1_min = v_M1[0]
+        m1_max = v_M1[-1]
+
+        for mu in v_mu:
+
+            print 'Processing mu =', mu
+
+            best_m1, best_br = find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, br_to, br_eq)
+
+            print 'best m1 = %f with BR(N1->%s) = %f' % (best_m1, br_to, best_br)
+
+
+
     susyhitutils.clean_run_directory()
-
-
-
-
 
 
 

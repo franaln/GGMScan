@@ -2,7 +2,11 @@
 
 import argparse
 import ROOT
-from rootutils import set_default_style
+from rootutils import *
+
+ROOT.gROOT.SetBatch()
+
+set_default_style()
 
 labels = {
     'm1': 'M_{1}',
@@ -51,61 +55,165 @@ labels = {
 }
 
 
-def slhaplot(filename, x, y=None, z=None, selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
-
-    set_default_style()
-
-    # ntotal = tree.GetEntries("1");
-    # nselect = tree.GetEntries(cutstr);
-
-    # print "Plotting ", varstr, " with selection ", cutstr, "."
-    # print "Selected ", nselect, " out of ", ntotal, " entries. Fraction = ", nselect/ntotal
+def get_histogram(filename, x, y, z, selection=''):
 
     tree = ROOT.TChain('slha')
     tree.Add(filename)
 
-    tree.SetMarkerStyle(21)
-    tree.SetMarkerSize(1)
+    if not z:
+        varstr = '%s:%s' % (y, x)
 
-    if y is not None and z is not None:
-        varstr = '%s:%s:%s>>htmp' % (y, x, z)
+        tree.Draw(varstr, selection)
+        g = ROOT.gPad.GetPrimitive("Graph")
+
     else:
-        varstr = '%s>>htmp' % x
+        varstr = '%s:%s:%s>>htmp' % (y, x, z)
 
-    tree.Draw(varstr, selection, 'col goff')
+        tree.SetMarkerStyle(21)
+        tree.SetMarkerSize(1)
 
-    hist = ROOT.gDirectory.Get('htmp')
+        tree.Draw(varstr, selection, 'col goff')
 
-    hist.SetTitle('')
-    hist.SetStats(0)
+        g = ROOT.gDirectory.Get('htmp')
+        g.SetDirectory(0)
+        g.SetStats(0)
 
-    hist.GetXaxis().SetTitle(labels.get(x, x))
+    ROOT.SetOwnership(g, False)
 
-    if y is not None:
-        hist.GetYaxis().SetTitle(labels.get(y, y))
-        hist.GetYaxis().SetTitleOffset(1.5)
+    g.SetTitle('')
+    g.SetMarkerStyle(20)
+    g.SetMarkerSize(0.5)
 
-    if z is not None:
-        hist.GetZaxis().SetTitle(labels.get(z, z))
-        hist.GetZaxis().SetTitleOffset(1.5)
+    return g.Clone()
+
+
+def slhaplot2(filename, x, y, z, selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, text=''):
+
+    g = get_histogram(filename, x, y, z, selection)
+
+    g.GetXaxis().SetTitle(labels.get(x, x))
+    g.GetYaxis().SetTitle(labels.get(y, y))
+    g.GetYaxis().SetTitleOffset(1.5)
+
+    #g.GetZaxis().SetTitle(labels.get(z, z))
+    #g.GetZaxis().SetTitleOffset(1.4)
 
     if xmin is not None and xmax is not None:
-        hist.GetXaxis().SetRangeUser(xmin, xmax)
-
+        g.GetXaxis().SetRangeUser(xmin, xmax)
     if ymin is not None and ymax is not None:
-        hist.GetYaxis().SetRangeUser(ymin, ymax)
-
+        g.GetYaxis().SetRangeUser(ymin, ymax)
     if zmin is not None and zmax is not None:
-        hist.GetZaxis().SetRangeUser(zmin, zmax)
-
-
+        g.GetZaxis().SetRangeUser(zmin, zmax)
 
     c = ROOT.TCanvas('', '', 800, 800)
+    if z is not None:
+        c.SetRightMargin(0.16)
 
-    c.SetRightMargin(0.16)
+    if z:
+        g.Draw('colz')
+    else:
+        print g ##g = sort_graph(g)
+        g.Draw('pa')
 
-    hist.Draw('colz')
+    if text:
+        text = labels.get(z, z) + ',  ' + text
+    else:
+        text = labels.get(z, z)
+
+    if text is not None:
+        t = ROOT.TLatex(0.1, 0.92, text)
+        t.SetNDC()
+        t.SetTextFont(132)
+        t.SetTextSize(0.035)
+        t.Draw()
+
     c.SaveAs(outname)
+
+    return g
+
+def slhaplot(filename, x, y, scanvar, scanvalues=[], selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, text=''):
+
+    colors = ['purple', 'blue', 'green', 'orange', 'pink', 'yellow', 'gray']
+
+    graphs = []
+
+    if scanvalues > 4:
+        leg = create_legend(0.5, 0.8, 0.7, 0.85, 2)
+    else:
+        leg = create_legend(0.5, 0.8, 0.7, 0.85)
+
+    i = 0
+    for cut in scanvalues:
+
+        tag = '%s = %i' % (labels.get(scanvar, scanvar), cut)
+
+        g = get_histogram(filename, x, y, '', selection+' && %s == %i' % (scanvar, cut))
+
+        g.SetMarkerColor(get_color(colors[i]))
+
+        leg.AddEntry(g, tag, 'p')
+
+        graphs.append(g)
+
+        i += 1
+
+    graphs[0].GetXaxis().SetTitle(labels.get(x, x))
+    graphs[0].GetYaxis().SetTitle(labels.get(y, y))
+    graphs[0].GetXaxis().SetRangeUser(xmin, xmax)
+    graphs[0].GetYaxis().SetRangeUser(ymin, ymax)
+
+    graphs[0].GetXaxis().SetLimits(xmin, xmax)
+
+    can = ROOT.TCanvas()
+
+    graphs[0].Draw('pa')
+
+    for g in graphs[1:]:
+        g.Draw('p same')
+
+    leg.Draw()
+
+    if text:
+        t = ROOT.TLatex(0.1, 0.92, text)
+        t.SetNDC()
+        t.SetTextFont(132)
+        t.SetTextSize(0.035)
+        t.Draw()
+
+    can.SaveAs(outname)
+
+
+def slhaplot1(filename, x, y, selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, logy=False, text=''):
+
+    g = get_histogram(filename, x, y, '', selection)
+
+    g.SetMarkerColor(get_color('blue'))
+
+    g.GetXaxis().SetTitle(labels.get(x, x))
+    g.GetYaxis().SetTitle(labels.get(y, y))
+
+    if xmin is not None and xmax is not None:
+        g.GetXaxis().SetRangeUser(xmin, xmax)
+        g.GetXaxis().SetLimits(xmin, xmax)
+
+    if ymin is not None and ymax is not None:
+        g.GetYaxis().SetRangeUser(ymin, ymax)
+
+    can = ROOT.TCanvas()
+
+    if logy:
+        can.SetLogy()
+
+    g.Draw('pa')
+
+    if text:
+        t = ROOT.TLatex(0.1, 0.92, text)
+        t.SetNDC()
+        t.SetTextFont(132)
+        t.SetTextSize(0.035)
+        t.Draw()
+
+    can.SaveAs(outname)
 
 
 def main():
@@ -120,7 +228,10 @@ def main():
 
     args = parser.parse_args()
 
-    slhaplot(args.treepath, args.x, args.y, args.z, args.output_file)
+    if args.z is None:
+        slhaplot1(args.treepath, args.x, args.y, outname=args.output_file)
+    else:
+        slhaplot2(args.treepath, args.x, args.y, args.z, outname=args.output_file)
 
 
 if __name__ == '__main__':
