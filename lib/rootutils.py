@@ -413,15 +413,16 @@ def sort_graph(g):
 
         xtmp = ROOT.Double(0)
         ytmp = ROOT.Double(0)
-
         g.GetPoint(i, xtmp, ytmp)
         d[xtmp] = ytmp
 
-    for x, y in sorted(d.iteritems()):
+    for x in sorted(d.iterkeys()):
         ax.append(x)
-        ay.append(y)
+        ay.append(d[x])
 
-    return ROOT.TGraph(g.GetN(), ax, ay)
+    newg = ROOT.TGraph(len(ax), ax, ay)
+
+    return newg.Clone()
 
 
 def draw_latex(x, y, text, size=None, ndc=False):
