@@ -425,7 +425,7 @@ def sort_graph(g):
     return newg.Clone()
 
 
-def draw_latex(x, y, text, size=None, ndc=False):
+def draw_latex(x, y, text, size=None, ndc=True):
     l = ROOT.TLatex(x, y, text)
     ROOT.SetOwnership(l, False)
 

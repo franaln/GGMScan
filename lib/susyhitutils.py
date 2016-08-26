@@ -4,11 +4,11 @@ import os
 import shutil
 import string
 
-def writeSuspectPar(m1, m3, mu, msq, at, tanbeta):
+def writeSuspectPar(m1, m2, m3, mu, tanb, msq, at):
 
     #arguments: M1, M3, mu, At
-    Msf12 = msq #5E+03
-    Msf3  = msq #5E+03
+    Msf12 = msq
+    Msf3  = msq
 
     # inputs remaining constant through the scan:
     SLHAInputTemplate = string.Template("""\
@@ -44,20 +44,26 @@ Block SMINPUTS               # Standard Model inputs
    7     1.77700000E+00  # m_tau(pole)
 Block MINPAR                 # Input parameters
 #   input for GMSB models (! comment (#) all other (mSUGRA,AMSB) lines):
+#     1    100.d3  # Lambda_susy
+#     2    200.d3  # Lambda_mess
+#     3    10     # tanbeta(MZ)
+#     4    1.      # sign(MU)
+#     5    1       # Nl_mes
+#     6    1       # Nq_mes
 Block EXTPAR                 # Input parameters
    0     9.11876000E+01   # EWSB_scale
    1     ${M1}      # M_1
-   2     5.0E+03    # M_2
+   2     ${M2}      # M_2
    3     ${M3}      # M_3
-   11    ${At}      # A_t
+   11    0.00E+00   # A_t
    12    0.00E+00   # A_b
    13    0.00E+00   # A_tau
    14    0.00E+00   # A_u
    15    0.00E+00   # A_d
    16    0.00E+00   # A_e
    23    ${mu}      # mu(EWSB)
-   26    2.00E+03   # MA_pole
    25    ${tanBeta} # tanbeta(MZ)
+   26    2.00E+03   # MA_pole
    31    ${Msf12}   # M_eL
    32    ${Msf12}   # M_muL
    33    ${Msf3}    # M_tauL
@@ -76,22 +82,21 @@ Block EXTPAR                 # Input parameters
 """)
 
     SLHAInput = SLHAInputTemplate.substitute({
-        'MODSEL' : 0,
-        'M1' : m1,
-        'M3' : m3,
-        'mu' : mu,
+        'MODSEL': 2,
+        'M1': m1,
+        'M2': m2,
+        'M3': m3,
+        'mu': mu,
         'Msq': msq,
         'At' : at,
-        'Msf12' : Msf12,
-        'Msf3' : Msf3,
-        'tanBeta' : tanbeta,
+        'Msf12': Msf12,
+        'Msf3': Msf3,
+        'tanBeta' : tanb,
     })
 
     InFile = open('suspect2_lha.in', 'w')
     InFile.write(SLHAInput)
     InFile.close()
-
-
 
 
 def create_run_directory(run_dir='.'):
@@ -101,8 +106,6 @@ def create_run_directory(run_dir='.'):
 
     if not os.path.exists(run_dir):
         os.system('mkdir -p %s' % run_dir)
-
-
 
     # Copy SUSYHIT executables
     shutil.copy2(os.environ['SUSYGRID'] + '/SuSpect/suspect2', '%s/suspect2' % run_dir)
@@ -140,38 +143,37 @@ def clean_run_directory():
 
 
 # SUSY-HIT: generate SLHA file
-def generate_slha(at, tanb, msq, m3, m1, mu, Gmass, outfile=None):
+def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None):
 
     if outfile is None:
-        outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
-
-    # if outfile in os.listdir('.'):
-    #     return outfile
+        outfile = 'm1_%s_m2_%s_m3_%s_mu_%s_tanb_%s_msq_%s_at_%s_Gmass_%s.slha' % (m1, m2, m3, mu, tanb, msq, at, Gmass)
 
     # Create Suspect input
-    writeSuspectPar(m1, m3, mu, msq, at, tanb)
+    writeSuspectPar(m1, m2, m3, mu, tanb, msq, at)
 
     # Run Suspect
-    st = os.system('./suspect2 > /dev/null')
+    st = os.system('./suspect2 > /dev/null 2>&1')
 
     if st != 0:
-        print 'error running suspect'
         return None
 
     # Copy Suspect output to SUSYHIT input
     os.system('mv suspect2_lha.out slhaspectrum.in')
 
     # hack MODSEL (to make it 'look like' GMSB)
-    os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
+    #os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
 
     # add the gravitino by hand!
     os.system('AddGravitino slhaspectrum.in %s' % Gmass)
 
+    # Fix Higgs mass (if needed)
+    Hmass = 126
+    os.system('FixHiggs slhaspectrum.in %s' % Hmass)
+
     # Run SUSYHIT
-    st = os.system('./runSUSYHIT > /dev/null')
+    st = os.system('./runSUSYHIT > /dev/null 2>&1')
 
     if st != 0:
-        print 'error running SUSYHIT'
         return None
 
     os.system('mv susyhit_slha.out %s' % outfile)

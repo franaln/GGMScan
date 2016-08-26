@@ -15,7 +15,6 @@ import pyslha
 def get_br(slhafile, br_to='Gy'):
 
     br = 0
-
     for dc in pyslha.read(slhafile).decays[1000022].decays:
 
         if br_to == 'Gy' and abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 22:
@@ -27,18 +26,17 @@ def get_br(slhafile, br_to='Gy'):
         if br_to == 'Gh' and abs(dc.ids[0]) == 1000039 and abs(dc.ids[1]) == 25:
             br += dc.br
 
-
     return br
 
 
-def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, br_to='Gy', br_eq=0.5, precision=0.005):
+def find_best_m1(m1_min, m1_max, m2, m3, mu, tanb, msq, at, Gmass, br_to='Gy', br_eq=0.5, precision=0.001):
 
     """
     Find M1/mu relation using bisection method :D
     """
 
     if args.verbose:
-        print 'find best m1 for m3 = %f, mu = %f with below %f %%' % (m3, mu, precision*100)
+        print 'find best m1 for m3 = %f, mu = %f' % (m3, mu)
 
     m1_a = m1_min
     m1_b = m1_max
@@ -52,23 +50,23 @@ def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, br_to='Gy', br_eq
         m1_p = (m1_a + m1_b) / 2
 
         # A
-        outfile = susyhitutils.generate_slha(at, tanb, msq, m3, m1_a, mu, Gmass)
+        outfile = susyhitutils.generate_slha(m1_a, m2, m3, mu, tanb, msq, at, Gmass)
 
         br = get_br(outfile, br_to)
 
         br_a = br - br_eq
 
         # B
-        outfile = susyhitutils.generate_slha(at, tanb, msq, m3, m1_b, mu, Gmass)
+        outfile = susyhitutils.generate_slha(m1_b, m2, m3, mu, tanb, msq, at, Gmass)
 
         br = get_br(outfile, br_to)
 
         br_b = br - br_eq
 
         # P
-        outfile = susyhitutils.generate_slha(at, tanb, msq, m3, m1_p, mu, Gmass)
+        outfile = susyhitutils.generate_slha(m1_p, m2, m3, mu, tanb, msq, at, Gmass)
 
-        br_n1_Gy = get_br(outfile, br_to)
+        br = get_br(outfile, br_to)
 
         br_p = br - br_eq
 
@@ -83,9 +81,13 @@ def find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, br_to='Gy', br_eq
         else:
             m1_b = m1_p
 
+        if m1_a == m1_b:
+            m1_a = m1_max
+
         iteration += 1
 
     return m1_p, br
+
 
 
 ##--
@@ -100,9 +102,12 @@ def main():
 
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
     parser.add_argument('--scan', action='store_true', help='Do parameters scan')
-    parser.add_argument('--m1mu', action='store_true', help='Find best m1/mu relation')
 
     parser.add_argument('--tune', help='Tune M1 to get desired N1->X BRs: br_n1_Gy=0.5 (example)')
+    parser.add_argument('--diag', help='')
+
+    #parser.add_argument('--bisection', action='store_true', help='bisection')
+
 
     global args
     args = parser.parse_args()
@@ -120,6 +125,7 @@ def main():
     def default_filter_fn(at, tanb, msq, m3, m1, mu, Gmass):
         pass
 
+    global filter_fn_copy
     try:
         filter_fn_copy = filter_fn
     except:
@@ -187,7 +193,7 @@ def main():
                                     if outfile in done_files:
                                         continue
 
-                                    susyhitutils.generate_slha(at, tanb, msq, m3, m1, mu, Gmass, outfile)
+                                    susyhitutils.generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile)
 
                                     ## Check that the n1 mass is below gluino mass, otherwise remove slha file
                                     masses = pyslha.read(outfile).blocks['MASS']
@@ -209,6 +215,7 @@ def main():
 
         br_to, br_eq = args.tune.split('=')
 
+        br_to = br_to.replace('br_n1_', '')
         br_eq = float(br_eq)
 
         at = v_At[0]
@@ -220,13 +227,19 @@ def main():
         m1_min = v_M1[0]
         m1_max = v_M1[-1]
 
+        m2 = 3.0E3
+
         for mu in v_mu:
 
             print 'Processing mu =', mu
 
-            best_m1, best_br = find_best_m1(at, tanb, msq, m3, mu, Gmass, m1_min, m1_max, br_to, br_eq)
+            best_m1, best_br = find_best_m1(m1_min, m1_max, m2, m3, mu, tanb, msq, at, Gmass, br_to, br_eq)
 
             print 'best m1 = %f with BR(N1->%s) = %f' % (best_m1, br_to, best_br)
+
+
+
+
 
 
 

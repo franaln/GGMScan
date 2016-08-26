@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.7
+#! /usr/bin/env python
 # Code to draw mass spectrum from slha input file
 
 import os
@@ -131,8 +131,8 @@ def main():
     try:
         doc = pyslha.read(ifile)
         masses = doc.blocks['MASS']
-    except pyslha.ParseError, pe:
-        print str(pe) + "... exiting"
+    except pyslha.ParseError as pe:
+        print (str(pe) + "... exiting")
         sys.exit(1)
 
 
@@ -213,7 +213,7 @@ def main():
     #Call Drawing code for read spectrum
     output_name = os.path.basename(ifile).replace('slha', 'pdf')
 
-    print "GENERATING MASS SPECTRUM..."
+    print ("GENERATING MASS SPECTRUM...")
 
     # count valid particles
     Nparts = 0
