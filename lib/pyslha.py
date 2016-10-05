@@ -298,7 +298,7 @@ class Block(object):
         if not hasattr(args, "__iter__"):
             raise AccessError("Block entries must be iterable")
         ## Auto-convert the types in the list
-        args = map(_autotype, args)
+        args = list(map(_autotype, args))
         ## Re-join consecutive strings into single entries
         i = 0
         while i < len(args)-1:
@@ -382,7 +382,7 @@ class Block(object):
         Note: The Python 3 dict attribute 'items()' is used rather than the
         'old' Python 2 'iteritems()' name for forward-looking compatibility.\
         """
-        return self.entries.iteritems()
+        return self.entries.items()
 
     def __len__(self):
         return len(self.entries)
@@ -455,7 +455,9 @@ class Particle(object):
 
     def add_decay(self, br, nda, ids):
         self.decays.append(Decay(br, nda, ids))
-        self.decays.sort()
+
+        self.decays.sort(key=lambda x: x.br, reverse=True)
+        # self.decays.sort()
 
     def __cmp__(self, other):
         if abs(self.pid) == abs(other.pid):
@@ -558,7 +560,7 @@ def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
                 else:
                     br = float(items[0]) if items[0].upper() != "NAN" else None
                     nda = int(items[1])
-                    ids = map(int, items[2:])
+                    ids = list(map(int, items[2:]))
                     if br > 0.0 or not ignorenobr: # br == None is < 0
                         decays[currentdecay].add_decay(br, nda, ids)
 
@@ -580,7 +582,7 @@ def writeSLHABlocks(blocks, precision=8):
     """Return an SLHA definition as a string, from the supplied blocks dict."""
     sep = 3 * " "
     blockstrs = []
-    for bname, b in blocks.iteritems():
+    for bname, b in blocks.items():
         namestr = b.name
         if b.q is not None:
             namestr += " Q= " + _autostr(float(b.q), precision)
@@ -604,7 +606,7 @@ def writeSLHADecays(decays, ignorenobr=False, precision=8):
     """Return an SLHA decay definition as a string, from the supplied decays dict."""
     sep = 3 * " "
     blockstrs = []
-    for pid, particle in decays.iteritems():
+    for pid, particle in decays.items():
         blockstr = ("DECAY %d " % particle.pid) + _autostr(particle.totalwidth or -1, precision) + "\n"
         decaystrs = []
         for d in particle.decays:
@@ -1029,8 +1031,8 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
             ## Identify decay matrix element to use
             ## From std HW docs, or from this pair:
             ## Two new matrix element codes have been added for these new decays:
-            ##    NME =	200 	3 body top quark via charged Higgs
-            ##    	300 	3 body R-parity violating gaugino and gluino decays
+            ##    NME =	200     3 body top quark via charged Higgs
+            ##          300     3 body R-parity violating gaugino and gluino decays
             nme = 0
             # TODO: Get correct condition for using ME 100... this guessed from some ISAWIG output
             if abs(pid) in (6, 12):
@@ -1303,30 +1305,3 @@ def writeISAWIGFile(isafile, doc, **kwargs):
     Other keyword parameters are passed to writeISAWIG.
     """
     _write(isafile, writeISAWIG(doc, **kwargs))
-
-
-###############################################################################
-## Main function for module testing
-
-if __name__ == "__main__":
-
-    import sys
-    for a in sys.argv[1:]:
-        doc = read(a)
-        print doc
-        print
-
-        for bname, b in sorted(doc.blocks.iteritems()):
-            print b
-            print
-
-        print doc.blocks.keys()
-
-        print doc.blocks["MASS"].get(25)
-        print
-
-        for p in sorted(doc.decays.values()):
-            print p
-            print
-
-        print writeSLHA(doc, ignorenobr=True)

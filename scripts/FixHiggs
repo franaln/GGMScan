@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+    echo Usage: $0 \<Input\> \<mh\>
+    exit 127
+fi
+
+MYFILE=$1
+HMASS=$2
+
+cat $1 |  awk '{
+
+      if ($1 == "BLOCK") Block=$2
+      if (Block=="MASS" && $1==25) printf "%5s%5s%5s%1.8E%4s%2s\n","",$1,"",'$HMASS',$3,$4;
+      else print $0;
+
+}' > mytemp.tmp
+
+mv mytemp.tmp $1
