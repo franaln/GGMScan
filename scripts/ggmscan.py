@@ -9,7 +9,6 @@ import datetime
 import argparse
 import susyhitutils
 from progressbar import ProgressBar
-import pyslha
 
 
 def main():
@@ -22,7 +21,6 @@ def main():
 
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
     parser.add_argument('--scan', action='store_true', help='Do parameters scan')
-
 
     global args
     args = parser.parse_args()
@@ -38,15 +36,25 @@ def main():
         print('Configfile must have the following vectors: v_m1, v_m2, v_m3, v_mu, v_msq, v_tanb, v_at, v_gmass')
         raise
 
-    def default_filter_fn(m1, m2, m3, mu, tanb, msq, at, gmass):
+    def default_filter_par_fn(m1, m2, m3, mu, tanb, msq, at, gmass):
         pass
 
-    global filter_fn_copy
+    def default_filter_slha_fn(slha_path):
+        pass
+
+    global filter_fn_par_copy
     try:
-        filter_fn_copy = filter_fn
+        filter_fn_par_copy = filter_par_fn
+    except:
+        print('No parameter filter function defined in config file')
+        filter_fn_par_copy = default_filter_par_fn
+
+    global filter_fn_slha_copy
+    try:
+        filter_fn_slha_copy = filter_slha_fn
     except:
         print('No filter function defined in config file')
-        filter_fn_copy = default_filter_fn
+        filter_fn_slha_copy = default_filter_slha_fn
 
     # Count total jobs
     njobs = 0
@@ -58,7 +66,7 @@ def main():
                         for m1 in v_m1:
                             for mu in v_mu:
                                 for Gmass in v_gmass:
-                                    if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
+                                    if filter_fn_par_copy(at, tanb, msq, m3, m1, mu, Gmass):
                                         continue
                                     njobs += 1
 
@@ -102,7 +110,7 @@ def main():
                             for m1 in v_m1:
                                 for mu in v_mu:
                                     for Gmass in v_Gmass:
-                                        if filter_fn_copy(at, tanb, msq, m3, m1, mu, Gmass):
+                                        if filter_fn_par_copy(at, tanb, msq, m3, m1, mu, Gmass):
                                             continue
 
                                         outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
@@ -114,19 +122,17 @@ def main():
 
 
                                         ## Check that the n1 mass is below gluino mass, otherwise remove slha file
-                                        masses = pyslha.read(outfile).blocks['MASS']
-                                        m_gl = masses[1000021]
-                                        m_n1 = masses[1000022]
 
-                                        if m_n1 > m_gl:
+                                        if filter_fn_slha_copy(outfile):
                                             rm_files += 1
                                             os.system('rm %s' % outfile)
+
 
                                         bar.print_bar(progress)
                                         progress += 1
 
         # end of loops
-        print('%i files removed beacuse m_n1 > m_gl' % rm_files)
+        print('%i files removed beacuse slha filter' % rm_files)
 
 
     # Clean directory
