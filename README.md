@@ -24,3 +24,10 @@ def filter_fn_par(m1, m2, m3, mu, tanb, msq, at, gmass):
 def filter_fn_slha(slha_path):
     ...
 ```
+
+
+To create an ntuple from slha files:
+
+```
+slha2tree.py -r -o OUTPUT_FILE SLHA_DIR
+```
