@@ -1,12 +1,12 @@
 GGMScan
 ========
 
-To scan the GGM phase space:
+To scan the GGM parameter space:
 
-* Run:
+* Usage:
 
 ```
-ggmscan.py
+ggmscan.py -c CONFIGFILE [-o OUTPUTDIR] [-v] [--count] [--scan]
 ```
 
 * The configfile must have the following vectors defining the phase space to scan:
@@ -15,9 +15,12 @@ ggmscan.py
 v_mu, v_m1, v_m2, v_m3, v_at, v_gmass, v_msq, v_tanb
 ```
 
-* It can also contain a filter function. If return true the point is skipped.
+* It can also contain a filter function (based on parameters or the slha parameters). If return true the point is skipped.
 
 ```
-def filter_fn(m1, m2, m3, mu, tanb, msq, at, gmass):
-     ...
+def filter_fn_par(m1, m2, m3, mu, tanb, msq, at, gmass):
+    ...
+
+def filter_fn_slha(slha_path):
+    ...
 ```
