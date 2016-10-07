@@ -18,7 +18,7 @@ class ProgressBar:
             self.barlength = total
             self.check_each_evts = 1
 
-        for i in xrange(done):
+        for i in range(done):
             if i % self.increment == 0:
                 self.current_progress += 1
 
@@ -63,7 +63,7 @@ class ProgressBar:
             rate_str += "GHz"
 
         bar = '['
-        for i in xrange(self.barlength):
+        for i in range(self.barlength):
             if i < self.current_progress:
                 bar += '='
             else:
@@ -71,8 +71,8 @@ class ProgressBar:
 
         perc = event/float(self.total) * 100
 
-        bar += "] %i of %i " % (event, self.total)
-        bar += " (%i%%) | %s | %s remaining"  %  (perc, rate_str, remaining_time)
+        bar += "] % 3i of %i " % (event, self.total)
+        bar += " (% 3i%%) | %s | %s remaining"  %  (perc, rate_str, remaining_time)
 
         # Add new line (only for last line in fancy draw mode)
         # if event == self.total:
@@ -139,6 +139,6 @@ if __name__ == '__main__':
         done = 0
 
     pb = ProgressBar(total, done)
-    for i in xrange(done, total):
+    for i in range(done, total):
         time.sleep(0.1)
         pb.print_bar(i+1)
