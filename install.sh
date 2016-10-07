@@ -48,13 +48,6 @@ chmod +x compileit.sh
 
 cd $ROOTDIR
 
-## create
-#echo
-#echo ">> creating dir structure..."
-# mkdir -p RunDir/plots
-# mkdir -p RunDir/logs
-# mkdir -p RunDir/output/SLHA
-
 ##create setup script
 echo export SUSYGRID=$PWD >> setup.sh
 echo export PATH=$PWD/scripts:$PATH >> setup.sh

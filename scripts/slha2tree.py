@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.7
+#! /usr/bin/env python
 
 import os
 import sys
@@ -63,6 +63,30 @@ variables = [
     'lsp',
     'nlsp',
 
+    # neutralino mixing matrix
+    'n11',
+    'n12',
+    'n13',
+    'n14',
+    'n21',
+    'n22',
+    'n23',
+    'n24',
+    'n31',
+    'n32',
+    'n33',
+    'n34',
+    'n41',
+    'n42',
+    'n43',
+    'n44',
+
+    # chargino mixing matrix
+    'c11',
+    'c12',
+    'c21',
+    'c22',
+
     # decay length
     'ctau_gl',
     'ctau_n1',
@@ -105,28 +129,27 @@ ntuple = ROOT.TNtuple('slha', 'slha', ':'.join(variables))
 for evt, infile in enumerate(get_slha_files(args.slhapath)):
 
     if evt % 1000 == 0:
-        print 'Processing %i ...' % evt
+        print('Processing %i ...' % evt)
 
     ## Read spectrum file
     BLOCKS, DECAYS = None, None
     try:
         doc = pyslha.read(infile)
         BLOCKS, DECAYS = doc.blocks, doc.decays
-    except pyslha.ParseError, pe:
-        print str(pe) + " (%s) ... exiting" % infile
+    except (pyslha.ParseError, pe):
+        print(str(pe) + " (%s) ... exiting" % infile)
         continue
 
     ## SUSY parameters
     params = BLOCKS['EXTPAR']
 
-    m1 = params[1]
-    m2 = params[2]
-    m3 = params[3]
-    mu = params[23]
-    msq = params[41]
+    m1   = params[1]
+    m2   = params[2]
+    m3   = params[3]
+    mu   = params[23]
+    msq  = params[41]
     tanb = params[25]
-    at = params[11]
-
+    at   = params[11]
 
     ## Masses
     masses = { k: abs(v) for k, v in BLOCKS['MASS'].items() }
@@ -146,6 +169,33 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
 
     lsp  = sparticles[0]
     nlsp = sparticles[1]
+
+    ## N mixing matrix
+    nmix = BLOCKS['NMIX']
+    n11 = nmix[(1,1)]
+    n12 = nmix[(1,2)]
+    n13 = nmix[(1,3)]
+    n14 = nmix[(1,4)]
+    n21 = nmix[(2,1)]
+    n22 = nmix[(2,2)]
+    n23 = nmix[(2,3)]
+    n24 = nmix[(2,4)]
+    n31 = nmix[(3,1)]
+    n32 = nmix[(3,2)]
+    n33 = nmix[(3,3)]
+    n34 = nmix[(3,4)]
+    n41 = nmix[(4,1)]
+    n42 = nmix[(4,2)]
+    n43 = nmix[(4,3)]
+    n44 = nmix[(4,4)]
+
+    ## Chargino mixing matrix
+    umix = BLOCKS['UMIX']
+    c11 = umix[(1,1)]
+    c12 = umix[(1,2)]
+    c21 = umix[(2,1)]
+    c22 = umix[(2,2)]
+
 
     ## Decays
     hbar = 6.582E-25      # GeV.s
@@ -331,6 +381,30 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         lsp,
         nlsp,
 
+        # neut mixing matrix
+        n11,
+        n12,
+        n13,
+        n14,
+        n21,
+        n22,
+        n23,
+        n24,
+        n31,
+        n32,
+        n33,
+        n34,
+        n41,
+        n42,
+        n43,
+        n44,
+
+        # chargino mixing matrix
+        c11,
+        c12,
+        c21,
+        c22,
+
         # decay length
         ctau_gl,
         ctau_n1,
@@ -365,7 +439,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
 
         br_c1_n1,
         br_c1_GW,
-
     ]
 
     ntuple.Fill(array.array("f", values))
@@ -373,4 +446,4 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
 
 ntuple.Write()
 output_file.Close()
-print 'done -> %s created' % args.output_file
+print('done -> %s created' % args.output_file)

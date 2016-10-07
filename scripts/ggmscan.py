@@ -34,8 +34,8 @@ def main():
         v_mu, v_m1, v_m2, v_m3, v_at, v_gmass, v_msq, v_tanb
 
     except:
-        print 'Error in the configile. exit...'
-        print 'Configfile must have the following vectors: v_m1, v_m2, v_m3, v_mu, v_msq, v_tanb, v_at, v_gmass'
+        print('Error in the configile. exit...')
+        print('Configfile must have the following vectors: v_m1, v_m2, v_m3, v_mu, v_msq, v_tanb, v_at, v_gmass')
         raise
 
     def default_filter_fn(m1, m2, m3, mu, tanb, msq, at, gmass):
@@ -45,7 +45,7 @@ def main():
     try:
         filter_fn_copy = filter_fn
     except:
-        print 'No filter function defined in config file'
+        print('No filter function defined in config file')
         filter_fn_copy = default_filter_fn
 
     # Count total jobs
@@ -63,7 +63,7 @@ def main():
                                     njobs += 1
 
     if args.count:
-        print 'Number of jobs: %i' % njobs
+        print('Number of jobs: %i' % njobs)
         return
 
     # Run directory
@@ -84,7 +84,7 @@ def main():
             done_files = filter(os.path.isfile, slha_files)
             done_files.sort(key=lambda x: os.path.getmtime(x))
             done_files = done_files[:-1] # FIX: check for errors in done_files
-            print 'Found %i slha files already done. Continue with the remaining jobs...' % len(done_files)
+            print('Found %i slha files already done. Continue with the remaining jobs...' % len(done_files))
         else:
             done_files = []
 
@@ -126,7 +126,7 @@ def main():
                                         progress += 1
 
         # end of loops
-        print '%i files removed beacuse m_n1 > m_gl' % rm_files
+        print('%i files removed beacuse m_n1 > m_gl' % rm_files)
 
 
     # Clean directory

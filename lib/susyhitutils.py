@@ -82,7 +82,7 @@ Block EXTPAR                 # Input parameters
 """)
 
     SLHAInput = SLHAInputTemplate.substitute({
-        'MODSEL': 2,
+        'MODSEL': 0,
         'M1': m1,
         'M2': m2,
         'M3': m3,
@@ -93,6 +93,7 @@ Block EXTPAR                 # Input parameters
         'Msf3': Msf3,
         'tanBeta' : tanb,
     })
+
 
     InFile = open('suspect2_lha.in', 'w')
     InFile.write(SLHAInput)
@@ -158,10 +159,10 @@ def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None):
         return None
 
     # Copy Suspect output to SUSYHIT input
-    os.system('mv suspect2_lha.out slhaspectrum.in')
+    os.system('cp suspect2_lha.out slhaspectrum.in')
 
     # hack MODSEL (to make it 'look like' GMSB)
-    #os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
+    os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
 
     # add the gravitino by hand!
     os.system('AddGravitino slhaspectrum.in %s' % Gmass)
