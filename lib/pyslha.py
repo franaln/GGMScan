@@ -20,7 +20,7 @@ graphics package, and as LaTeX/TikZ source for direct embedding into documents o
 user-tweaking of the generated output.
 
 Users of version 2.x should note that the interface has changed a little in
-version 3.0.0 and onward: there are now generic read()/write() functions which
+version 3.x: there are now generic read()/write() functions which
 can operate on filenames or file objects, and all I/O functions now
 return/accept a single Doc object rather than a tuple of blocks, decays,
 etc. dicts. This single-object interface to the SLHA document allows for more
@@ -55,9 +55,17 @@ MODSEL { 1,1 : sugra }
 >>> d.blocks['MODSEL']
 MODSEL { 1,1 : sugra; 1,2 : foo }
 
+
+Blocks
+------
+
 The Block interface also supplies dict-like has_key(), keys(), and items()
 methods, as well as more specialist value(), set_value() and is_single_valued()
 methods for improved access to ALPHA and any other unindexed blocks.
+
+
+Decays
+------
 
 The decay system has a similar interface to that of the generic Block for
 accessing particle decay channel information:
@@ -74,33 +82,62 @@ The DECAY blocks in SLHA files are in fact mapped into Particle objects, each of
 which contains multiple Decay objects. Check the Python documentation for Doc,
 Block, Particle and Decay, plus the pyslha module free functions for I/O.
 
+
+Cross-sections
+--------------
+
+Cross-section information, cf. the new XSECTION block type, is available via
+Doc.xsections. As for decays, the API structure is a bit different from the text
+format: xsections is a dict of Process objects, each of which contains all
+XSECTION lines for a given list of (sorted) initial + final state particle
+IDs. This is different from the text format in that a single Process contains
+cross-sections, as XSec objects, for multiple centre-of-mass energies
+(sqrts). For example:
+
+>>> print d.xsections
+[(2212, 2212, 1000001, 1000003), (2212, 2212, -1000002, 2000002), ...]
+>>> myproc = d.xsections[2212,2212,1000001,1000003]
+
+The Process interface supplies a convenient method for filtering the
+contained XSecs on any of their defining attributes, including scale scheme, QCD
+and EW orders, multiplicative scale factors, PDF ID code, and
+generator/integrator.
+
+>>> myproc.get_xsecs(sqrts=13000., kappa_r=2., code='Prospino')
+
+
+Citation
+--------
+
 If you use PySLHA, for either model data handling or spectrum visualisation,
 please cite the paper: http://arxiv.org/abs/1305.4194
 
 TODOs:
 
-  For 3.0.x:
-   * More refinements to I/O functions, including bound write methods on Doc.
-   * Add handling of XSECTION when standardised.
-   * Use Doc to handle document-level header comments.
-   * Use _dict/DataStore to handle block and decay summary comments.
+  For 3.2.x:
    * In set_value, if first item is non-int, treat as None-indexed.
    * Refine value string heuristic for strings with ints in them?
-   * Add Sphinx docs.
 
-  For 3.1.x:
+  For 3.3.0:
+   * Use Doc to handle document-level header comments.
+   * Use _dict to handle block and decay summary comments.
    * Preserve _inline_ comments from read -> write (needs full-line/inline
      comment separation). Can use separate comment dicts in Block, Decay,
      etc. and attach a multiline .comment attr to the returned/written dicts.
 
-  Later/maybe:
+  Later, maybe:
    * Identify HERWIG decay matrix element to use in ISAWIG.
    * Handle RPV SUSY in ISAWIG.
 """
 
 __author__ = "Andy Buckley <andy.buckley@cern.ch>"
-__version__ = "3.0.2"
+__version__ = "3.2.0"
 
+
+## Python version: require >= 2.6 (including Py3) for "as" exception handling syntax and ternary "x if a else y" syntax
+import sys
+if sys.version_info < (2,6):
+    raise Exception("pyslha requires Python >= 2.6")
 
 
 ###############################################################################
@@ -130,6 +167,12 @@ class _dict(type(_d)):
         super(_dict, self).__init__()
         self.name = name
 
+    def __getitem__(self, key):
+        return super(_dict, self).__getitem__(_autotuple(key))
+
+    def __setitem__(self, key, val):
+        return super(_dict, self).__setitem__(_autotuple(key), val)
+
     def __repr__(self):
         s = ""
         if self.name:
@@ -154,8 +197,11 @@ def _autotype(var):
 
 def _autostr(var, precision=8):
     """Automatically format numerical types as the right sort of string."""
-    if type(var) is float:
-        return ("% ." + str(precision) + "e") % var
+    # print("@", type(var), "@")
+    if type(var) is str:
+        return var
+    elif type(var) is float:
+        return ("% ." + str(precision) + "g") % var
     elif not hasattr(var, "__iter__"):
         return str(var)
     else:
@@ -163,6 +209,8 @@ def _autostr(var, precision=8):
 
 def _autotuple(a):
     """Automatically convert the supplied iterable to a scalar or tuple as appropriate."""
+    if not hasattr(a, "__iter__"):
+        return a
     if len(a) == 1:
         return a[0]
     return tuple(a)
@@ -222,7 +270,7 @@ class Doc(object):
         self.xsections = xsections
         self.comment = ""
 
-    def write(self, filename=None, ignorenobr=False, precision=8):
+    def write(self, filename=None, ignorenobr=True, precision=8):
         """
         Convenient method for converting an SLHA Doc object to SLHA format,
         either returned as a string or written to a file depending on whether
@@ -262,8 +310,8 @@ class Block(object):
 
     Multiple (integer) indices are possible, especially for entries in mixing
     matrix blocks. These are now implemented in the natural way, e.g. for access
-    to the (1,2) element of a mixing matrix block, use bmix[1,2] = 0.123 and
-    print bmix[1,2]. The value() and set_value() functions behave
+    to the (1,2) element of a mixing matrix block, use 'bmix[1,2] = 0.123' and
+    'print bmix[1,2]'. The value() and set_value() functions behave
     similarly. Multi-element values are also permitted.
 
     It is possible, although not usual, to store unindexed values in a
@@ -298,7 +346,7 @@ class Block(object):
         if not hasattr(args, "__iter__"):
             raise AccessError("Block entries must be iterable")
         ## Auto-convert the types in the list
-        args = list(map(_autotype, args))
+        args = [_autotype(a) for a in args]
         ## Re-join consecutive strings into single entries
         i = 0
         while i < len(args)-1:
@@ -313,7 +361,7 @@ class Block(object):
     def is_single_valued(self):
         """Return true if there is only one entry, and it has no index: the
         'value()' attribute may be used in that case without an argument."""
-        return len(self.entries) == 1 and self.entries.keys()[0] is None
+        return len(self.entries) == 1 and list(self.entries.keys())[0] is None
 
     def value(self, key=None, default=1):
         """Get a value from the block with the supplied key.
@@ -322,7 +370,7 @@ class Block(object):
         value otherwise an AccessError exception will be raised.\
         """
         if key is None and not self.is_single_valued():
-            raise AccessError("Tried to access unique value of multi-value block")
+            raise AccessError("Tried to access unique value of multi-value block " + self.name)
         if not self.has_key(key):
             return default
         return self.entries[key]
@@ -347,7 +395,7 @@ class Block(object):
             raise AccessError("set_value() called without arguments")
         elif len(args) == 1:
             if len(self.entries) > 0 and not self.is_single_valued():
-                raise AccessError("Tried to set a unique value on a multi-value block")
+                raise AccessError("Tried to set a unique value on a multi-value block " + self.name)
             self.entries[None] = args[0]
         else:
             ## Find the first non-integer -- all previous items are indices
@@ -366,7 +414,7 @@ class Block(object):
 
     def has_key(self, key):
         """Does the block have the given key?"""
-        return self.entries.has_key(key)
+        return key in self.entries
 
     def keys(self):
         """Access the block item keys."""
@@ -377,15 +425,14 @@ class Block(object):
         return self.entries.values()
 
     def items(self, key=None):
-        """Access the block items as (key,value) tuples.
-
-        Note: The Python 3 dict attribute 'items()' is used rather than the
-        'old' Python 2 'iteritems()' name for forward-looking compatibility.\
-        """
+        """Access the block items as (key,value) tuples."""
         return self.entries.items()
 
     def __len__(self):
         return len(self.entries)
+
+    def __contains__(self, key):
+        return key in self.entries
 
     def __iter(self):
         return self.entries.__iter__()
@@ -398,14 +445,14 @@ class Block(object):
             raise AccessError("Attempted to set a block entry with a non-integer(s) index")
         self.entries[key] = value
 
-    def __cmp__(self, other):
-        return cmp(self.name, other.name) and cmp(self.entries, other.entries)
+    def __lt__(self, other):
+        return (self.name < other.name) and (self.entries < other.entries)
 
     def __repr__(self):
         s = self.name
         if self.q is not None:
             s += " (Q=%s)" % self.q
-        s += " { " + "; ".join(_autostr(k) + " : " + _autostr(v) for k, v in self.items()) + " }"
+            s += " { " + "; ".join(_autostr(k,3) + " : " + _autostr(v,3) for k, v in self.items()) + " }"
         return s
 
 
@@ -425,14 +472,14 @@ class Decay(object):
         self.parentid = parentid
         self.br = br
         self.nda = nda
-        self.ids = ids
+        self.ids = list(ids)
         assert(self.nda == len(self.ids))
 
-    def __cmp__(self, other):
-        return cmp(other.br, self.br)
+    def __lt__(self, other):
+        return (other.br < self.br)
 
     def __repr__(self):
-        return "% .8e %s" % (self.br, self.ids)
+        return "% .2g %s" % (self.br, self.ids)
 
 
 class Particle(object):
@@ -455,25 +502,160 @@ class Particle(object):
 
     def add_decay(self, br, nda, ids):
         self.decays.append(Decay(br, nda, ids))
+        self.decays.sort()
 
-        self.decays.sort(key=lambda x: x.br, reverse=True)
-        # self.decays.sort()
-
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if abs(self.pid) == abs(other.pid):
-            return cmp(self.pid, other.pid)
-        return cmp(abs(self.pid), abs(other.pid))
+            return (self.pid < other.pid)
+        return (abs(self.pid) < abs(other.pid))
 
     def __repr__(self):
         s = str(self.pid)
         if self.mass is not None:
-            s += " : mass = %.8e GeV" % self.mass
+            s += " : mass = %.3g GeV" % self.mass
         if self.totalwidth is not None:
-            s += " : total width = %.8e GeV" % self.totalwidth
+            s += " : total width = %.3g GeV" % self.totalwidth
         for d in self.decays:
             if d.br > 0.0:
                 s += "\n  %s" % d
         return s
+
+
+class XSec(object):
+    """
+    A cross-section value for a specific combination of energy, scheme, scale
+    choice, PDF, and the computational code (+ version) that made the calculation.
+    """
+    def __init__(self, sqrts, scale_scheme, qcd_order, ew_order, kappa_f, kappa_r, pdf_id, value, code=None):
+        self.sqrts = sqrts
+        self.scale_scheme = scale_scheme
+        self.qcd_order = qcd_order
+        self.ew_order = ew_order
+        self.kappa_f = kappa_f
+        self.kappa_r = kappa_r
+        self.pdf_id = pdf_id
+        self.value = value
+        ## Make sure that code is always a 2-list
+        self.code = code
+        if self.code is None:
+            self.code = [None, None]
+        elif type(self.code) is str:
+            self.code = [self.code, None]
+        assert len(self.code) == 2
+
+    @property
+    def scale_scheme_str(self):
+        return ("avg mass", "fixed", "s_hat", "mT")[self.scale_scheme]
+
+    @property
+    def qcd_order_str(self):
+        return ("Born", "NLO", "NLO+LL")[self.qcd_order] if self.qcd_order is not None else ""
+
+    @property
+    def ew_order_str(self):
+        return ("Born", "NLO", "NLO+LL")[self.ew_order] if self.ew_order is not None else ""
+
+    def __cmp__(self, other):
+        return \
+            (self.sqrts < other.sqrts) and \
+            (self.scale_scheme < other.scale_scheme) and \
+            (self.qcd_order < other.qcd_order) and \
+            (self.ew_order < other.ew_order) and \
+            (self.kappa_f < other.kappa_f) and \
+            (self.kappa_r < other.kappa_r) and \
+            (self.pdf_id < other.pdf_id) and \
+            (self.value < other.value) and \
+            (self.code < other.code)
+
+    def __repr__(self):
+        s = "sqrt(s) = %g GeV" % self.sqrts
+        if self.scale_scheme_str:
+            s += ", " + self.scale_scheme_str + " scale scheme"
+        if self.qcd_order_str:
+            s += ", " + self.qcd_order_str + " QCD"
+        if self.ew_order_str:
+            s += ", " + self.ew_order_str + " EW"
+        s += "; "
+        s += "K_F = %g, " % self.kappa_f
+        s += "K_R = %g, " % self.kappa_r
+        s += "PDF = %d " % self.pdf_id
+        s += ": xsec = %g pb" % self.value
+        if self.code[0]:
+            vstr = ""
+            if self.code[1]:
+                vstr = " " + self.code[1]
+            s += " (%s%s)" % (self.code[0], vstr)
+        return s
+
+
+class Process(object):
+    """
+    Representation of a single a b -> x y z ... scattering process, containing
+    cross-sections for that topology with different energies, schemes, scale
+    choices, PDFs, and origins. A method is provided to filter the contained
+    cross-section values by these criteria.
+    """
+    def __init__(self, pidsinitial, pidsfinal):
+        self.pidsinitial = sorted(pidsinitial)
+        self.pidsfinal = sorted(pidsfinal)
+        self.xsecs = []
+
+    def add_xsec(self, sqrts, scale_scheme, qcd_order, ew_order, kappa_f, kappa_r, pdf_id, value, code=None):
+        "Add an XSec object by passing the XSec constructor arguments directly"
+        self.xsecs.append(XSec(sqrts, scale_scheme, qcd_order, ew_order, kappa_f, kappa_r, pdf_id, value, code))
+        #self.xsecs.sort()
+
+    def get_xsecs(self, sqrts=None, scale_scheme=None, qcd_order=None, ew_order=None, kappa_f=None, kappa_r=None, pdf_id=None, code=None):
+        "Get all contained XSec objects matching the specified (all optional) filter values"
+        rtn = self.xsecs
+        if sqrts:
+            rtn = [x for x in rtn if x.sqrts == sqrts]
+        if scale_scheme:
+            rtn = [x for x in rtn if x.scale_scheme == scale_scheme]
+        if qcd_order:
+            rtn = [x for x in rtn if x.qcd_order == qcd_order]
+        if ew_order:
+            rtn = [x for x in rtn if x.ew_order == ew_order]
+        if kappa_f:
+            rtn = [x for x in rtn if x.kappa_f == kappa_f]
+        if kappa_r:
+            rtn = [x for x in rtn if x.kappa_r == kappa_r]
+        if pdf_id:
+            rtn = [x for x in rtn if x.pdf_id == pdf_id]
+        if code:
+            if type(code) is str or code[1] is None:
+                rtn = [x for x in rtn if x.code[0] == code[0]]
+            else:
+                rtn = [x for x in rtn if x.code == code]
+        return rtn
+
+    @property
+    def sqrtses(self):
+        # TODO: could just use an inline sorted set literal, but that would require Python >= 2.7... can't do that just yet
+        rtn = []
+        for x in self.xsecs:
+            if x.sqrts in rtn:
+                continue
+            rtn.append(x.sqrts)
+        rtn.sort()
+        return rtn
+
+    def __lt__(self, other):
+        if self.pidsinitial != other.pidsinitial:
+            return (self.pidsinitial < other.pidsinitial)
+        if self.pidsfinal != other.pidsfinal:
+            return (self.pidsfinal < other.pidsfinal)
+        return (self.xsecs < other.xsecs)
+
+    def __repr__(self):
+        s = " ".join(str(pid) for pid in self.pidsinitial)
+        s += "  ->  "
+        s += " ".join(str(pid) for pid in self.pidsfinal)
+        # s += " %d " % len(self.xsecs)
+        for x in self.xsecs:
+            s += "\n    %s" % x
+        return s
+
 
 
 
@@ -482,8 +664,8 @@ class Particle(object):
 
 def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
     """
-    Read an SLHA definition from a string, returning dictionaries of blocks and
-    decays.
+    Read an SLHA definition from a string, returning dictionaries of blocks,
+    decays ('Particle's), and cross-sections ('Process'es).
 
     If the ignorenobr parameter is True, do not store decay entries with a
     branching ratio of zero.
@@ -493,10 +675,15 @@ def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
     """
     blocks = _dict("Blocks")
     decays = _dict("Decays")
+    xsections = _dict("Cross-sections")
     #
-    import re
     currentblock = None
     currentdecay = None
+    currentsqrts = None
+    currentproc = None
+    #
+    import re
+    re_indented = re.compile(r"^\s+")
     for line in spcstr.splitlines():
         ## Handle (ignore) comment lines
         # TODO: Store block/entry comments
@@ -509,9 +696,10 @@ def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
             continue
 
         ## Section header lines start with a non-whitespace character, data lines have a whitespace indent
-        # TODO: Are tabs also allowed for indents? Check the SLHA standard.
-        if not line.startswith(" "):
-            # TODO: Should we now strip the line to remove any trailing whitespace?
+        ## NOTE: we'll accept any whitespace rather than just spaces cf. the SLHA standard.
+        #if not line.startswith(" "):
+        if not re_indented.match(line):
+            line = line.strip()
 
             ## Handle BLOCK start lines
             if line.upper().startswith("BLOCK"):
@@ -529,7 +717,12 @@ def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
                         qstr = qstr[qstr.find("=")+1:].strip()
                     currentblock = blockname
                     currentdecay = None
+                    currentsqrts = None
+                    currentproc = None
                     blocks[blockname] = Block(blockname, q=qstr)
+                    # TODO: Warn or combine if there are multiple blocks with the same name etc.?
+                    #blocks.setdefault(blockname, Block(blockname, q=qstr))
+
             ## Handle DECAY start lines
             elif line.upper().startswith("DECAY"):
                 match = re.match(r"DECAY\s+(-?\d+)\s+([\d\.E+-]+|NAN).*", line.upper())
@@ -539,30 +732,70 @@ def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
                 width = float(match.group(2)) if match.group(2) != "NAN" else None
                 currentblock = "DECAY"
                 currentdecay = pdgid
+                currentsqrts = None
+                currentproc = None
                 decays[pdgid] = Particle(pdgid, width)
+                # TODO: Warn or combine if there are multiple decay blocks with the same PID?
+                #decays.setdefault(pdgid, Particle(pdgid, width))
+
+            ## Handle XSECTION start lines
+            elif line.upper().startswith("XSECTION"):
+                match = re.match(r"XSECTION\s+([\d+\.E+-]+)\s+(-?\d+)\s+(-?\d+)\s+(\d+)\s+(.*)", line.upper())
+                if not match:
+                    continue
+                sqrts = float(match.group(1))
+                pdgid1 = int(match.group(2))
+                pdgid2 = int(match.group(3))
+                nf = int(match.group(4))
+                fspdgids = []
+                if match.group(4):
+                    fspdgids = [int(i) for i in match.group(5).strip().split()]
+                fspdgids.sort()
+                assert len(fspdgids) == nf
+                currentblock = "XSECTION"
+                currentdecay = None
+                currentsqrts = sqrts
+                currentproc = [pdgid1,pdgid2] + fspdgids
+                ## There might be more than one energy so we need to combine:
+                # TODO: need to do something about the tuplification for UX reasons?
+                xsections.setdefault(_autotuple(currentproc), Process([pdgid1,pdgid2], fspdgids))
+
             ## Handle unknown section type start lines (and continue ignoring until a non-header line is found)
             elif type(_autotype(line.split()[0])) is str:
-                import sys
                 sys.stderr.write("Ignoring unknown section type: %s\n" % line.split()[0])
                 currentblock = None
                 currentdecay = None
+                currentsqrts = None
+                currentproc = None
 
-        ## This non-empty line starts with an indent, hence must be an in-section data line
-        else:
-            # TODO: Should we now strip the line to remove the indent (and any trailing whitespace)?
-            if currentblock is not None:
-                items = line.split()
-                if len(items) < 1:
-                    continue
-                if currentblock != "DECAY":
-                    blocks[currentblock].add_entry(items)
-                # TODO: Add handling of XSECTION if/when standardised
-                else:
-                    br = float(items[0]) if items[0].upper() != "NAN" else None
-                    nda = int(items[1])
-                    ids = list(map(int, items[2:]))
-                    if br > 0.0 or not ignorenobr: # br == None is < 0
-                        decays[currentdecay].add_decay(br, nda, ids)
+        ## This non-empty line starts with an indent, hence must be an in-block data line (provided we _are_ in a block, otherwise ignore)
+        elif currentblock is not None:
+            # print "@", currentblock
+            items = line.split()
+            if not items: #< Shouldn't be possible, but whatever...
+                continue
+            # print items
+            if currentblock == "DECAY":
+                br = float(items[0]) if items[0].upper() != "NAN" else None
+                nda = int(items[1])
+                ids = map(int, items[2:])
+                if br or not ignorenobr:
+                    if not br or br <= 0:
+                        br = 0.0
+                    decays[currentdecay].add_decay(br, nda, ids)
+            elif currentblock == "XSECTION":
+                scale_scheme = int(items[0])
+                qcd_order = int(items[1])
+                ew_order = int(items[2])
+                kappa_f = float(items[3])
+                kappa_r = float(items[4])
+                pdf_id = int(items[5])
+                value = float(items[6])
+                code = items[7] if len(items) >= 8 else None
+                version = items[8] if len(items) >= 9 else None
+                xsections[currentproc].add_xsec(currentsqrts, scale_scheme, qcd_order, ew_order, kappa_f, kappa_r, pdf_id, value, [code, version])
+            else: # we're in a generic BLOCK
+                blocks[currentblock].add_entry(items)
 
     ## Try to populate Particle masses from the MASS block
     # print blocks.keys()
@@ -574,12 +807,14 @@ def readSLHA(spcstr, ignorenobr=False, ignorenomass=False, ignoreblocks=[]):
         if not ignorenomass:
             raise ParseError("No MASS block found: cannot populate particle masses")
 
-    rtn = Doc(blocks, decays)
+    rtn = Doc(blocks, decays, xsections)
     return rtn
 
 
 def writeSLHABlocks(blocks, precision=8):
     """Return an SLHA definition as a string, from the supplied blocks dict."""
+    if not blocks:
+        return ""
     sep = 3 * " "
     blockstrs = []
     for bname, b in blocks.items():
@@ -604,6 +839,8 @@ def writeSLHABlocks(blocks, precision=8):
 
 def writeSLHADecays(decays, ignorenobr=False, precision=8):
     """Return an SLHA decay definition as a string, from the supplied decays dict."""
+    if not decays:
+        return ""
     sep = 3 * " "
     blockstrs = []
     for pid, particle in decays.items():
@@ -620,9 +857,35 @@ def writeSLHADecays(decays, ignorenobr=False, precision=8):
 
 
 
+def writeSLHAXSections(xsections, precision=8):
+    """Return an SLHA cross-section definition as a string, from the supplied xsections dict."""
+    if not xsections:
+        return ""
+    sep = 3 * " "
+    blockstrs = []
+    for _, proc in xsections.items():
+        for sqrts in proc.sqrtses:
+            blockstr = "XSECTION " + _autostr(sqrts) + " "
+            blockstr += " ".join(str(pid) for pid in proc.pidsinitial)
+            blockstr += " %d " % len(proc.pidsfinal)
+            blockstr += " ".join(str(pid) for pid in proc.pidsfinal)
+            for x in proc.get_xsecs(sqrts=sqrts):
+                blockstr += "\n" + sep
+                blockstr += "%d %d %d " % (x.scale_scheme, x.qcd_order, x.ew_order)
+                blockstr += "%s %s " % (_autostr(x.kappa_f), _autostr(x.kappa_r))
+                blockstr += "%d %s" % (x.pdf_id, _autostr(x.value))
+                if x.code[0]:
+                    blockstr += " " + x.code[0]
+                if x.code[1]:
+                    blockstr += " " + x.code[1]
+            blockstrs.append(blockstr)
+    return "\n\n".join(blockstrs)
+
+
+
 def writeSLHA(doc, ignorenobr=False, precision=8):
-    """Return an SLHA definition as a string, from the supplied blocks and decays dicts."""
-    ss = [x for x in (writeSLHABlocks(doc.blocks, precision), writeSLHADecays(doc.decays, ignorenobr, precision)) if x]
+    """Return an SLHA definition as a string, from the supplied Doc."""
+    ss = [x for x in (writeSLHABlocks(doc.blocks, precision), writeSLHADecays(doc.decays, ignorenobr, precision), writeSLHAXSections(doc.xsections, precision)) if x]
     return "\n\n".join(ss)
 
 
@@ -820,14 +1083,7 @@ _PDGID2HERWIGID[ 1000024] = 454 ## CHGINO1+
 _PDGID2HERWIGID[-1000024] = 456 ## CHGINO1-
 _PDGID2HERWIGID[ 1000037] = 455 ## CHGINO2+
 _PDGID2HERWIGID[-1000037] = 457 ## CHGINO2-
-_PDGID2HERWIGID[ 1000039] = 458 ## GRAVTINO
-
-def pdgid2herwigid(pdgid):
-    """
-    Convert a particle ID code in the standard PDG ID code definition into
-    its equivalent in the HERWIG internal IDHW format (as used by ISAWIG).
-    """
-    return _PDGID2HERWIGID.get(pdgid, pdgid)
+_PDGID2HERWIGID[ 1000039] = 458 ## GRAVITINO
 
 
 ###############################################################################
@@ -866,12 +1122,12 @@ def readISAWIG(isastr, ignorenobr=False):
                 return s
 
     def getnextvalidlineitems():
-        return map(_autotype, getnextvalidline().split())
+        return [_autotype(x) for x in getnextvalidline().split()]
 
     ## Populate MASS block and create decaying particle objects
     masses = Block("MASS")
     numentries = int(getnextvalidline())
-    for i in xrange(numentries):
+    for i in range(numentries):
         hwid, mass, lifetime = getnextvalidlineitems()
         width = 1.0/(lifetime * 1.51926778e24) ## width in GeV == hbar/lifetime in seconds
         pdgid = herwigid2pdgid(hwid)
@@ -881,10 +1137,10 @@ def readISAWIG(isastr, ignorenobr=False):
     blocks["MASS"] = masses
 
     ## Populate decays
-    for n in xrange(numentries):
+    for n in range(numentries):
         numdecays = int(getnextvalidline())
         #print n+1, "/", numentries, numdecays
-        for d in xrange(numdecays):
+        for d in range(numdecays):
             #print n, numentries-1, d, numdecays-1
             decayitems = getnextvalidlineitems()
             hwid = decayitems[0]
@@ -896,7 +1152,7 @@ def readISAWIG(isastr, ignorenobr=False):
             for hw in daughter_hwids:
                 if hw != 0:
                     daughter_pdgids.append(herwigid2pdgid(hw))
-            if not decays.has_key(pdgid):
+            if pdgid not in decays:
                 #print "Decay for unlisted particle %d, %d" % (hwid, pdgid)
                 decays[pdgid] = Particle(pdgid)
             decays[pdgid].add_decay(br, len(daughter_pdgids), daughter_pdgids)
@@ -911,7 +1167,7 @@ def readISAWIG(isastr, ignorenobr=False):
     #
     ## Neutralino mixing matrix
     blocks["NMIX"] = Block("NMIX")
-    for i in xrange(1, 5):
+    for i in range(1, 5):
         nmix_i = getnextvalidlineitems()
         for j, v in enumerate(nmix_i):
             blocks["NMIX"][i, j+1] = v
@@ -965,9 +1221,9 @@ def readISAWIG(isastr, ignorenobr=False):
     return Doc(blocks, decays)
 
 
-def writeISAWIG(doc, ignorenobr=False, precision=8):
+def writeISAWIG(doc, ignorenobr=True, precision=8):
     """
-    Return a SUSY spectrum definition in the format produced by ISAWIG for inut to HERWIG
+    Return a SUSY spectrum definition in the format produced by ISAWIG for input to HERWIG
     as a string, from the supplied SLHA blocks and decays dicts.
 
     ISAWIG parsing based on the HERWIG SUSY specification format, from
@@ -998,9 +1254,17 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
             width = decays[pid].totalwidth
             if width and width > 0:
                 lifetime = 1.0/(width * 1.51926778e24) ## lifetime in seconds == hbar/width in GeV
+            if lifetime < 0: ## hack because HERWIG doesn't take negative lifetimes, but sets large positive ones stable
+                lifetime = -lifetime
         except:
             pass
-        massout += ("%d " % pdgid2herwigid(pid)) + _autostr(masses[pid], precision) + " " + _autostr(lifetime, precision) + "\n"
+        if -pid in _PDGID2HERWIGID.keys():
+            massout += ("%4d %11.4f %14.5e \n" % (_PDGID2HERWIGID.get(pid,pid), masses[pid], lifetime))
+            massout += ("%4d %11.4f %14.5e \n" % (_PDGID2HERWIGID.get(-pid,-pid), masses[pid], lifetime))
+        else:
+            # print pid
+            massout += ("%4d %11.4f %14.5e \n" % (_PDGID2HERWIGID.get(pid,pid), masses[pid], lifetime))
+        # massout += ("%d " % _PDGID2HERWIGID.get(pid,pid)) + _autostr(masses[pid], precision) + " " + _autostr(lifetime, precision) + "\n"
     out += "%d\n" % massout.count("\n")
     out += massout
 
@@ -1018,10 +1282,17 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
     ## the decay mode. NME is a code for the matrix element to be used, either from the
     ## SUSY elements or the main HERWIG MEs. IDKPRD are the HERWIG identity codes of the decay products.
     for i, pid in enumerate(decays.keys()):
+        if not pid in masses.keys():
+            continue
         # if not decays.has_key(pid):
         #     continue
-        hwid = pdgid2herwigid(pid)
+        hwid = _PDGID2HERWIGID.get(pid,pid)
         decayout = ""
+        hasantiparticle = False
+        if -pid in _PDGID2HERWIGID.keys():
+            hasantiparticle = True
+            hwidanti = _PDGID2HERWIGID.get(-pid,-pid)
+            decayoutanti = ""
         #decayout += "@@@@ %d %d %d\n" % (i, pid, hwid)
         for i_d, d in enumerate(decays[pid].decays):
             ## Skip decay if it has no branching ratio
@@ -1031,8 +1302,8 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
             ## Identify decay matrix element to use
             ## From std HW docs, or from this pair:
             ## Two new matrix element codes have been added for these new decays:
-            ##    NME =	200     3 body top quark via charged Higgs
-            ##          300     3 body R-parity violating gaugino and gluino decays
+            ##    NME =	200 	3 body top quark via charged Higgs
+            ##    	300 	3 body R-parity violating gaugino and gluino decays
             nme = 0
             # TODO: Get correct condition for using ME 100... this guessed from some ISAWIG output
             if abs(pid) in (6, 12):
@@ -1041,7 +1312,10 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
             if len(d.ids) == 3:
                 # TODO: How to determine the conditions for using 200 and 300 MEs? Enumeration of affected decays?
                 pass
-            decayout += ("%d " % hwid) + _autostr(d.br, precision) + (" %d " % nme)
+            decayout += ("%5d %15.8f %5d " % (hwid, d.br, nme))
+            if hasantiparticle:
+                decayoutanti += ("%5d %15.8f %5d " % (hwidanti, d.br, nme))
+            # decayout += ("%d " % hwid) + _autostr(d.br, precision) + (" %d " % nme)
 
             def is_quark(pid):
                 return (abs(pid) in range(1, 7))
@@ -1073,26 +1347,23 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
             def is_susy(pid):
                 return (is_squark(pid) or is_slepton(pid) or is_gaugino(pid) or pid == 1000021)
 
-            absids = map(abs, d.ids)
+            absids = [abs(i) for i in d.ids]
 
             ## Order decay products as required by HERWIG
             ## Top
             if abs(pid) == 6:
-                def cmp_bottomlast(a, b):
-                    """Comparison function which always puts b/bbar last"""
-                    if abs(a) == 5:
-                        return True
-                    if abs(b) == 5:
-                        return False
-                    return cmp(a, b)
+                def key_bottomlast(item):
+                    """Comparison function which always puts b/bar last"""
+                    answer = (item == 5)*1e9 #< I never liked this ad-hocness in the 'key' approach
+                    return answer if answer != 0 else item
                 if len(absids) == 2:
                     ## 2 body mode, to Higgs: Higgs; Bottom
                     if (25 in absids or 26 in absids) and 5 in absids:
-                        d.ids = sorted(d.ids, cmp=cmp_bottomlast)
+                        d.ids = sorted(d.ids, key=key_bottomlast)
                 elif len(absids) == 3:
                     ## 3 body mode, via charged Higgs/W: quarks or leptons from W/Higgs; Bottom
                     if 37 in absids or 23 in absids:
-                        d.ids = sorted(d.ids, cmp=cmp_bottomlast)
+                        d.ids = sorted(d.ids, key=key_bottomlast)
             ## Gluino
             elif abs(pid) == 1000021:
                 if len(absids) == 2:
@@ -1100,36 +1371,24 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
                     ## without gluon: any order
                     ## with gluon: gluon; colour neutral
                     if 21 in absids:
-                        def cmp_gluonfirst(a, b):
+                        def key_gluonfirst(item):
                             """Comparison function which always puts gluon first"""
-                            if a == 21:
-                                return False
-                            if b == 21:
-                                return True
-                            return cmp(a, b)
-                        d.ids = sorted(d.ids, cmp=cmp_gluonfirst)
+                            answer = (item == 21)*-1e9 #< I never liked this ad-hocness in the 'key' approach
+                            return answer if answer != 0 else item
+                        d.ids = sorted(d.ids, key=key_gluonfirst)
                 elif len(absids) == 3:
                     ## 3-body modes, R-parity conserved: colour neutral; q or qbar
-                    def cmp_quarkslast(a, b):
+                    def key_quarkslast(item):
                         """Comparison function which always puts quarks last"""
-                        if is_quark(a):
-                            return True
-                        if is_quark(b):
-                            return False
-                        return cmp(a, b)
-                    d.ids = sorted(d.ids, cmp=cmp_quarkslast)
+                        answer = is_quark(item)*1e9 #< I never liked this ad-hocness in the 'key' approach
+                        return answer if answer != 0 else item
+                    d.ids = sorted(d.ids, key=key_quarkslast)
             ## Squark/Slepton
             elif is_squark(pid) or is_slepton(pid):
-                def cmp_susy_quark_lepton(a, b):
-                    if is_susy(a):
-                        return False
-                    if is_susy(b):
-                        return True
-                    if is_quark(a):
-                        return False
-                    if is_quark(b):
-                        return True
-                    return cmp(a, b)
+                def key_susy_quark_lepton(item):
+                    answer = (is_susy(item) + is_quark(item))*-1e9 #< I never liked this ad-hocness in the 'key' approach
+                    return answer if answer != 0 else item
+
                 ##   2 body modes: Gaugino/Gluino with Quark/Lepton     Gaugino      quark
                 ##                                                      Gluino       lepton
                 ##   3 body modes: Weak                                 sparticle    particles from W decay
@@ -1138,7 +1397,8 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
                 ##                 Baryon number violated               quark     quark
                 ## Slepton
                 ##   2 body modes: Lepton Number Violated               q or qbar
-                d.ids = sorted(d.ids, cmp=cmp_bottomlast)
+                # d.ids = sorted(d.ids, key=key_bottomlast)
+                d.ids = sorted(d.ids, key=key_susy_quark_lepton)
             ## Higgs
             elif pid in (25, 26):
                 # TODO: Includes SUSY Higgses?
@@ -1147,14 +1407,11 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
                 ##                 (s)lepton-(s)lepton                  (s)l or (s)lbar
                 ##   3 body modes:                                      colour neutral       q or qbar
                 if len(absids) == 3:
-                    def cmp_quarkslast(a, b):
+                    def key_quarkslast(item):
                         """Comparison function which always puts quarks last"""
-                        if is_quark(a):
-                            return True
-                        if is_quark(b):
-                            return False
-                        return cmp(a, b)
-                    d.ids = sorted(d.ids, cmp=cmp_quarkslast)
+                        answer = is_quark(item)*1e9 #< I never liked this ad-hocness in the 'key' approach
+                        return answer if answer != 0 else item
+                    d.ids = sorted(d.ids, key=key_quarkslast)
             elif is_gaugino(pid):
                 # TODO: Is there actually anything to do here?
                 ## Gaugino
@@ -1164,14 +1421,11 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
                 ##   3 body modes: R-parity conserved                   colour neutral       q or qbar
                 ##                                                                           l or lbar
                 if len(absids) == 3:
-                    def cmp_quarkslast(a, b):
+                    def key_quarkslast(item):
                         """Comparison function which always puts quarks last"""
-                        if is_quark(a):
-                            return True
-                        if is_quark(b):
-                            return False
-                        return cmp(a, b)
-                    d.ids = sorted(d.ids, cmp=cmp_quarkslast)
+                        answer = is_quark(item)*1e9 #< I never liked this ad-hocness in the 'key' approach
+                        return answer if answer != 0 else item
+                    d.ids = sorted(d.ids, key=key_quarkslast)
 
             # TODO: Gaugino/Gluino
             ##   3 body modes:  R-parity violating:   Particles in the same order as the R-parity violating superpotential
@@ -1180,49 +1434,70 @@ def writeISAWIG(doc, ignorenobr=False, precision=8):
             ids = [0,0,0,0,0]
             for i, pid in enumerate(d.ids):
                 ids[i] = pid
-            ids = map(str, ids)
-            decayout += " ".join(ids) + "\n"
+            for id_i in ids:
+                decayout += "%5d " % _PDGID2HERWIGID.get(id_i, id_i)
+                if hasantiparticle:
+                    id_anti_i = -id_i if -id_i in _PDGID2HERWIGID.keys() else id_i
+                    decayoutanti += "%5d " % _PDGID2HERWIGID.get(id_anti_i, id_anti_i)
+            decayout += "\n"
+            if hasantiparticle:
+                decayoutanti += "\n"
+            # decayout += " ".join(ids) + "\n"
         ndecayout = decayout.count("\n")
         # if ndecayout:
         decayout = ("%d\n" % ndecayout) + decayout
         out += decayout
+        if hasantiparticle:
+            decayoutanti = ("%d\n" % ndecayout) + decayoutanti
+            out += decayoutanti
 
     ## Now the SUSY parameters
     ## TANB, ALPHAH:
-    out += _autostr(blocks["MINPAR"][3], precision) + " " + _autostr(blocks["ALPHA"].value(), precision) + "\n"
+    out += ("%15.8f %15.8f \n" %(blocks["MINPAR"][3], blocks["ALPHA"].value()))
+    # out += _autostr(blocks["MINPAR"][3], precision) + " " + _autostr(blocks["ALPHA"].value(), precision) + "\n"
     ## Neutralino mixing matrix
     nmix = blocks["NMIX"]
-    for i in xrange(1, 5):
-        out += _autostr(nmix[i,1], precision) + " " + \
-               _autostr(nmix[i,2], precision) + " " + \
-               _autostr(nmix[i,3], precision) + " " + \
-               _autostr(nmix[i,4], precision) + "\n"
+    for i in range(1, 5):
+        out += ("%15.8f %15.8f %15.8f %15.8f \n" %(nmix[i,1], nmix[i,2], nmix[i,3], nmix[i,4]))
+        # out += _autostr(nmix[i,1], precision) + " " + \
+        #        _autostr(nmix[i,2], precision) + " " + \
+        #        _autostr(nmix[i,3], precision) + " " + \
+        #        _autostr(nmix[i,4], precision) + "\n"
     ## Chargino mixing matrices V and U
     vmix = blocks["VMIX"]
-    out += _autostr(vmix[1,1], precision) + " " + \
-           _autostr(vmix[1,2], precision) + " " + \
-           _autostr(vmix[2,1], precision) + " " + \
-           _autostr(vmix[2,2], precision) + "\n"
+    out += ("%15.8f %15.8f %15.8f %15.8f \n" %(vmix[1,1], vmix[1,2], vmix[2,1], vmix[2,2]))
+    # out += _autostr(vmix[1,1], precision) + " " + \
+    #        _autostr(vmix[1,2], precision) + " " + \
+    #        _autostr(vmix[2,1], precision) + " " + \
+    #        _autostr(vmix[2,2], precision) + "\n"
     umix = blocks["UMIX"]
-    out += _autostr(umix[1,1], precision) + " " + \
-           _autostr(umix[1,2], precision) + " " + \
-           _autostr(umix[2,1], precision) + " " + \
-           _autostr(umix[2,2], precision) + "\n"
+    out += ("%15.8f %15.8f %15.8f %15.8f \n" %(umix[1,1], umix[1,2], umix[2,1], umix[2,2]))
+    # out += _autostr(umix[1,1], precision) + " " + \
+    #        _autostr(umix[1,2], precision) + " " + \
+    #        _autostr(umix[2,1], precision) + " " + \
+    #        _autostr(umix[2,2], precision) + "\n"
     ## THETAT,THETAB,THETAL
     import math
-    out += _autostr(math.acos(blocks["STOPMIX"][1,1]), precision) + " " + \
-           _autostr(math.acos(blocks["SBOTMIX"][1,1]), precision) + " " + \
-           _autostr(math.acos(blocks["STAUMIX"][1,1]), precision) + "\n"
+    out += ("%15.8f %15.8f %15.8f \n" %(blocks["STOPMIX"][1,1], blocks["SBOTMIX"][1,1], blocks["STAUMIX"][1,1]))
+    # out += _autostr(math.acos(blocks["STOPMIX"][1,1]), precision) + " " + \
+    #        _autostr(math.acos(blocks["SBOTMIX"][1,1]), precision) + " " + \
+    #        _autostr(math.acos(blocks["STAUMIX"][1,1]), precision) + "\n"
     ## ATSS,ABSS,ALSS
-    out += _autostr(blocks["AU"][3,3], precision) + " " + \
-           _autostr(blocks["AD"][3,3], precision) + " " + \
-           _autostr(blocks["AE"][3,3], precision) + "\n"
+    out += ("%15.8f %15.8f %15.8f \n" %(blocks["AU"][3,3], blocks["AD"][3,3], blocks["AE"][3,3]))
+    # out += _autostr(blocks["AU"][3,3], precision) + " " + \
+    #        _autostr(blocks["AD"][3,3], precision) + " " + \
+    #        _autostr(blocks["AE"][3,3], precision) + "\n"
     ## MUSS == sign(mu)
-    out += "%f\n" % blocks["MINPAR"][4]
+    out += "%15.8f\n" % blocks["MINPAR"][4]
 
     ## RPV SUSY
-    isRPV = False
-    out += "%d\n" % isRPV
+    # JEM EDIT: HERWIG reads the logical variable isRPC, not RPV. This is the opposite.
+    # isRPV = False
+    isRPC = True
+    if isRPC:
+        out += "  T  \n"
+    else:
+        out += "  F  \n"
     # TODO: Write RPV couplings if RPV is True (lambda1,2,3; 27 params in each, sci format.
     # TODO: Get the index orderings right
     # if isRPV: ...
@@ -1284,9 +1559,9 @@ def write(spcfile, doc, **kwargs):
     Other keyword parameters are passed to writeSLHA/writeISAWIG.
     """
     if type(spcfile) is str and spcfile.endswith(".isa"):
-        writeISAWIG(spcfile, doc, **kwargs)
+        writeISAWIGFile(spcfile, doc, **kwargs)
     else:
-        writeSLHA(spcfile, doc, **kwargs)
+        writeSLHAFile(spcfile, doc, **kwargs)
 
 def writeSLHAFile(spcfile, doc, **kwargs):
     """
@@ -1305,3 +1580,29 @@ def writeISAWIGFile(isafile, doc, **kwargs):
     Other keyword parameters are passed to writeISAWIG.
     """
     _write(isafile, writeISAWIG(doc, **kwargs))
+
+
+###############################################################################
+## Main function for module testing
+
+if __name__ == "__main__":
+
+    for a in sys.argv[1:]:
+        doc = read(a)
+        print(doc)
+        print("")
+
+        for bname, b in sorted(doc.blocks.items()):
+            print(b)
+            print("")
+
+        print(doc.blocks.keys())
+
+        print(doc.blocks["MASS"].get(25))
+        print("")
+
+        for p in sorted(doc.decays.values()):
+            print(p)
+            print("")
+
+        print(writeSLHA(doc, ignorenobr=True))

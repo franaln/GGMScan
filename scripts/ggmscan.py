@@ -10,6 +10,8 @@ import argparse
 import susyhitutils
 from progressbar import ProgressBar
 
+is_py3 = (sys.version_info > (3, 0))
+
 
 def main():
 
@@ -26,7 +28,10 @@ def main():
     args = parser.parse_args()
 
     try:
-        execfile(args.configfile, globals())
+        if is_py3:
+            exec(open(args.configfile).read(), globals())
+        else:
+            execfile(args.configfile, globals())
 
         # check needed vectors
         v_mu, v_m1, v_m2, v_m3, v_at, v_gmass, v_msq, v_tanb
@@ -66,7 +71,7 @@ def main():
                         for m1 in v_m1:
                             for mu in v_mu:
                                 for Gmass in v_gmass:
-                                    if filter_fn_par_copy(at, tanb, msq, m3, m1, mu, Gmass):
+                                    if filter_fn_par_copy(m1, m2, m3, mu, tanb, msq, at, Gmass):
                                         continue
                                     njobs += 1
 
@@ -89,8 +94,8 @@ def main():
         # Check scan status
         slha_files = glob.glob('at*.slha')
         if len(slha_files) > 0:
-            done_files = filter(os.path.isfile, slha_files)
-            done_files.sort(key=lambda x: os.path.getmtime(x))
+            done_files = [ f for f in slha_files if os.path.isfile(f) ]
+            #done_files.sort(key=lambda x: os.path.getmtime(x))
             done_files = done_files[:-1] # FIX: check for errors in done_files
             print('Found %i slha files already done. Continue with the remaining jobs...' % len(done_files))
         else:
@@ -109,8 +114,8 @@ def main():
                         for m2 in v_m2:
                             for m1 in v_m1:
                                 for mu in v_mu:
-                                    for Gmass in v_Gmass:
-                                        if filter_fn_par_copy(at, tanb, msq, m3, m1, mu, Gmass):
+                                    for Gmass in v_gmass:
+                                        if filter_fn_par_copy(m1, m2, m3, mu, tanb, msq, at, Gmass):
                                             continue
 
                                         outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
