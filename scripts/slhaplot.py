@@ -1,12 +1,9 @@
-#! /usr/bin/env python2.7
+#! /usr/bin/env python
 
 import argparse
 import ROOT
 from rootutils import *
 
-ROOT.gROOT.SetBatch()
-
-set_default_style()
 
 labels = {
     'm1': 'M_{1}',
@@ -52,10 +49,33 @@ labels = {
     'br_n3_n2': 'BR(#chi^{0}_{3} #rightarrow #chi^{0}_{2})',
     'br_n3_c1': 'BR(#chi^{0}_{3} #rightarrow #chi^{#pm}_{1})',
     'br_n3_GX': 'BR(#chi^{0}_{3} #rightarrow #tilde{G} X)',
+
+    'ctau_n1': 'c#tau_{#chi^{0}_{1}}',
+
+    'n1_bino': '#tilde{B}',
+    'n1_wino': '#tilde{W}_{3}',
+    'n1_hino1': '#tilde{H}^{0}_{1}',
+    'n1_hino2': '#tilde{H}^{0}_{2}',
+
+    'n2_bino': '#tilde{B}',
+    'n2_wino': '#tilde{W}_{3}',
+    'n2_hino1': '#tilde{H}^{0}_{1}',
+    'n2_hino2': '#tilde{H}^{0}_{2}',
+
+    'n3_bino': '#tilde{B}',
+    'n3_wino': '#tilde{W}_{3}',
+    'n3_hino1': '#tilde{H}^{0}_{1}',
+    'n3_hino2': '#tilde{H}^{0}_{2}',
+
+    'n4_bino': '#tilde{B}',
+    'n4_wino': '#tilde{W}_{3}',
+    'n4_hino1': '#tilde{H}^{0}_{1}',
+    'n4_hino2': '#tilde{H}^{0}_{2}',
+
 }
 
 
-def get_histogram(filename, x, y, z, selection=''):
+def get_histogram(filename, x, y, z=False, selection=''):
 
     tree = ROOT.TChain('slha')
     tree.Add(filename)
@@ -89,6 +109,8 @@ def get_histogram(filename, x, y, z, selection=''):
 
 def slhaplot2(filename, x, y, z, selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, text=''):
 
+    # set_palette()
+
     g = get_histogram(filename, x, y, z, selection)
 
     g.GetXaxis().SetTitle(labels.get(x, x))
@@ -102,17 +124,29 @@ def slhaplot2(filename, x, y, z, selection='', outname='x.pdf', xmin=None, xmax=
         g.GetXaxis().SetRangeUser(xmin, xmax)
     if ymin is not None and ymax is not None:
         g.GetYaxis().SetRangeUser(ymin, ymax)
-    if zmin is not None and zmax is not None:
-        g.GetZaxis().SetRangeUser(zmin, zmax)
 
     c = ROOT.TCanvas('', '', 800, 800)
+    c.SetLeftMargin(0.12)
+    c.SetTopMargin(0.08)
     if z is not None:
         c.SetRightMargin(0.16)
 
     if z:
+        #g.SetContour(999)
+        # if zmin is not None and zmax is not None:
+        #     # # g.SetMaximum(zmax)
+        #     # # g.SetMinimum(zmin)
+        #     # print (g)
+        #     # g.Print('all')
+        #     fix_hist2d(g)
+        #     g.DrawClone('col')
+        #     g.GetZaxis().SetRangeUser(zmin, zmax)
+        #     g.Draw('colz same')
+
+        # else:
         g.Draw('colz')
     else:
-        print g ##g = sort_graph(g)
+        g = sort_graph(g)
         g.Draw('pa')
 
     if text:
@@ -120,8 +154,14 @@ def slhaplot2(filename, x, y, z, selection='', outname='x.pdf', xmin=None, xmax=
     else:
         text = labels.get(z, z)
 
+
+    # line = ROOT.TLine(800, 800, 2200, 2200)
+    # line.SetLineColor(ROOT.kGray+2)
+    # line.SetLineStyle(2)
+    # line.Draw()
+
     if text is not None:
-        t = ROOT.TLatex(0.1, 0.92, text)
+        t = ROOT.TLatex(0.14, 0.94, text)
         t.SetNDC()
         t.SetTextFont(132)
         t.SetTextSize(0.035)
@@ -225,14 +265,20 @@ def main():
     parser.add_argument('-x')
     parser.add_argument('-y')
     parser.add_argument('-z')
+    parser.add_argument('-s', default='')
 
     args = parser.parse_args()
 
     if args.z is None:
         slhaplot1(args.treepath, args.x, args.y, outname=args.output_file)
     else:
-        slhaplot2(args.treepath, args.x, args.y, args.z, outname=args.output_file)
+        slhaplot2(args.treepath, args.x, args.y, args.z, args.s, outname=args.output_file)
 
 
 if __name__ == '__main__':
+
+    ROOT.gROOT.SetBatch()
+
+    set_default_style()
+
     main()

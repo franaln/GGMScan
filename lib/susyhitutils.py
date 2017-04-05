@@ -46,7 +46,7 @@ Block MINPAR                 # Input parameters
 #   input for GMSB models (! comment (#) all other (mSUGRA,AMSB) lines):
 #     1    100.d3  # Lambda_susy
 #     2    200.d3  # Lambda_mess
-#     3    10     # tanbeta(MZ)
+#     3    10      # tanbeta(MZ)
 #     4    1.      # sign(MU)
 #     5    1       # Nl_mes
 #     6    1       # Nq_mes
@@ -121,7 +121,6 @@ def clean_run_directory():
     if not 'SUSYGRID' in os.environ:
         raise 'SUSYGRID env variable is not set'
 
-
     if not os.path.exists('suspect2'):
         #print 'the directory doesn\'t exist'
         return
@@ -144,7 +143,7 @@ def clean_run_directory():
 
 
 # SUSY-HIT: generate SLHA file
-def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None):
+def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None, debug=False):
 
     if outfile is None:
         outfile = 'm1_%s_m2_%s_m3_%s_mu_%s_tanb_%s_msq_%s_at_%s_Gmass_%s.slha' % (m1, m2, m3, mu, tanb, msq, at, Gmass)
@@ -153,13 +152,16 @@ def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None):
     writeSuspectPar(m1, m2, m3, mu, tanb, msq, at)
 
     # Run Suspect
-    st = os.system('./suspect2 > /dev/null 2>&1')
+    if debug:
+        st = os.system('./suspect2')
+    else:
+        st = os.system('./suspect2 > /dev/null 2>&1')
 
     if st != 0:
         return None
 
     # Copy Suspect output to SUSYHIT input
-    os.system('cp suspect2_lha.out slhaspectrum.in')
+    os.system('mv suspect2_lha.out slhaspectrum.in')
 
     # hack MODSEL (to make it 'look like' GMSB)
     os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
@@ -172,7 +174,10 @@ def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None):
     os.system('FixHiggs slhaspectrum.in %s' % Hmass)
 
     # Run SUSYHIT
-    st = os.system('./runSUSYHIT > /dev/null 2>&1')
+    if debug:
+        st = os.system('./runSUSYHIT')
+    else:
+        st = os.system('./runSUSYHIT > /dev/null 2>&1')
 
     if st != 0:
         return None
