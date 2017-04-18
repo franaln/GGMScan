@@ -217,6 +217,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
 
     br_gl_c1 = 0
     br_gl_Gg = 0
+    br_gl_other = 0
     for dc in gluino.decays:
 
         pid0 = abs(dc.ids[0])
@@ -253,9 +254,36 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         elif pid0 == 1000039 and pid1 == 21:
             br_gl_Gg += dc.br
 
+        else:
+            br_gl_other += dc.br
+
     br_gl_n1 = br_gl_n1g + br_gl_n1qq
     br_gl_n2 = br_gl_n2g + br_gl_n2qq
     br_gl_n3 = br_gl_n3g + br_gl_n3qq
+
+
+    # Fix files modified by hand
+    br_total = br_gl_n1 + br_gl_n2 + br_gl_n3 + br_gl_c1 + br_gl_Gg + br_gl_other
+
+    print(infile, br_total)
+    if br_total < 0.99:
+        br_gl_n1g  = br_gl_n1g/br_total
+        br_gl_n1qq = br_gl_n1qq/br_total
+        br_gl_n2g  = br_gl_n2g/br_total
+        br_gl_n2qq = br_gl_n2qq/br_total
+        br_gl_n3g  = br_gl_n3g/br_total
+        br_gl_n3qq = br_gl_n3qq/br_total
+        br_gl_c1   = br_gl_c1/br_total
+        br_gl_c1qq = br_gl_c1qq/br_total
+        br_gl_Gg   = br_gl_Gg/br_total
+        br_gl_other   = br_gl_other/br_total
+
+    br_gl_n1 = br_gl_n1g + br_gl_n1qq
+    br_gl_n2 = br_gl_n2g + br_gl_n2qq
+    br_gl_n3 = br_gl_n3g + br_gl_n3qq
+
+    br_total = br_gl_n1 + br_gl_n2 + br_gl_n3 + br_gl_c1 + br_gl_Gg + br_gl_other
+    print(br_total)
 
 
     # neutralino1 decays

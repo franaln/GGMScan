@@ -4,6 +4,7 @@ import os
 import sys
 import glob
 import math
+import time
 import shutil
 import datetime
 import argparse
@@ -131,6 +132,9 @@ def main():
                                         if filter_fn_slha_copy(outfile):
                                             rm_files += 1
                                             os.system('rm %s' % outfile)
+
+                                        if progress%10 == 0:
+                                            time.sleep(10)
 
 
                                         bar.print_bar(progress)
