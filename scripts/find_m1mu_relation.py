@@ -36,7 +36,7 @@ def find_best_m1(m1_min, m1_max, m2, m3, mu, tanb, msq, at, Gmass, br_to='Gy', b
     """
 
     if args.verbose:
-        print 'find best m1 for m3 = %f, mu = %f' % (m3, mu)
+        print ('find best m1 for m3 = %f, mu = %f' % (m3, mu))
 
     m1_a = m1_min
     m1_b = m1_max
@@ -147,11 +147,11 @@ def main():
 
     for mu in v_mu:
 
-        print 'Processing mu =', mu
+        print ('Processing mu =', mu)
 
         best_m1, best_br = find_best_m1(m1_min, m1_max, m2, m3, mu, tanb, msq, at, gmass, br_to, br_eq, args.precision)
 
-        print 'best m1 = %f with BR(N1->%s) = %f' % (best_m1, br_to, best_br)
+        print ('best m1 = %f with BR(N1->%s) = %f' % (best_m1, br_to, best_br))
 
 
     susyhitutils.clean_run_directory()

@@ -79,7 +79,7 @@ class ProgressBar:
         #     bar += '\n'
 
         # Print to screen
-        #self.clear_line()
+        # self.clear_line()
         sys.stdout.write(bar+'\n')
         sys.stdout.flush()
 

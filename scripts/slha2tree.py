@@ -120,6 +120,8 @@ variables = [
     'br_n3_GX',
 
     'br_c1_n1',
+    'br_c1_n1qq',
+    'br_c1_n1lnu',
     'br_c1_GW',
 ]
 
@@ -265,7 +267,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     # Fix files modified by hand
     br_total = br_gl_n1 + br_gl_n2 + br_gl_n3 + br_gl_c1 + br_gl_Gg + br_gl_other
 
-    print(infile, br_total)
     if br_total < 0.99:
         br_gl_n1g  = br_gl_n1g/br_total
         br_gl_n1qq = br_gl_n1qq/br_total
@@ -283,8 +284,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     br_gl_n3 = br_gl_n3g + br_gl_n3qq
 
     br_total = br_gl_n1 + br_gl_n2 + br_gl_n3 + br_gl_c1 + br_gl_Gg + br_gl_other
-    print(br_total)
-
 
     # neutralino1 decays
     n1 = DECAYS[1000022]
@@ -370,6 +369,8 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     c1 = DECAYS[1000024]
 
     br_c1_n1 = 0
+    br_c1_n1qq = 0
+    br_c1_n1lnu = 0
     br_c1_GW = 0
     for dc in c1.decays:
 
@@ -379,6 +380,12 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         # C1 -> N1
         if pid0 == 1000022:
             br_c1_n1 += dc.br
+
+            if pid1 < 6:
+                br_c1_n1qq += dc.br
+            else:
+                br_c1_n1lnu += dc.br
+
 
         # C1 -> ~G W
         elif pid0 == 1000039 and pid1 == 24:
@@ -466,6 +473,8 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         br_n3_GX,
 
         br_c1_n1,
+        br_c1_n1qq,
+        br_c1_n1lnu,
         br_c1_GW,
     ]
 
