@@ -5,7 +5,8 @@ echo
 echo "*** getting SUSYHIT package from source..."
 mkdir SUSYHIT
 cd SUSYHIT
-curl -O http://www.itp.kit.edu/~maggie/SUSY-HIT/susyhit.tar.gz
+curl -O https://www.itp.kit.edu/~maggie/SUSY-HIT/susyhit.tar.gz
+
 
 ## untar
 echo
