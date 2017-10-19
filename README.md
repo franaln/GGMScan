@@ -15,7 +15,7 @@ To scan the GGM parameter space:
 ggmscan.py -c CONFIGFILE [-o OUTPUTDIR] [-v] [--count] [--scan]
 ```
 
-* The configfile must have the following vectors defining the phase space to scan:
+* The configfile must have the following lists defining the phase space to scan:
 
 ```
 v_mu, v_m1, v_m2, v_m3, v_at, v_gmass, v_msq, v_tanb
