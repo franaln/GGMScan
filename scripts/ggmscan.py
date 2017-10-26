@@ -133,8 +133,8 @@ def main():
                                             rm_files += 1
                                             os.system('rm %s' % outfile)
 
-                                        if progress%10 == 0:
-                                            time.sleep(10)
+                                        # if progress%10 == 0:
+                                        #     time.sleep(2)
 
 
                                         bar.print_bar(progress)
