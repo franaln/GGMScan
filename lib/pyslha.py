@@ -279,7 +279,7 @@ class Doc(object):
         if filename is None:
             return writeSLHA(self, ignorenobr, precision)
         else:
-            write(filename, self, ignorenobr, precision)
+            writeSLHAFile(filename, self) ##, ignorenobr, precision)
 
     def __repr__(self):
         s = "<PySLHA Doc: %d blocks, %d decays, %d xsections" % \
@@ -1302,8 +1302,8 @@ def writeISAWIG(doc, ignorenobr=True, precision=8):
             ## Identify decay matrix element to use
             ## From std HW docs, or from this pair:
             ## Two new matrix element codes have been added for these new decays:
-            ##    NME =	200 	3 body top quark via charged Higgs
-            ##    	300 	3 body R-parity violating gaugino and gluino decays
+            ##    NME =	200     3 body top quark via charged Higgs
+            ##          300     3 body R-parity violating gaugino and gluino decays
             nme = 0
             # TODO: Get correct condition for using ME 100... this guessed from some ISAWIG output
             if abs(pid) in (6, 12):

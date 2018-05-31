@@ -6,7 +6,6 @@ To download and compile SUSYHIT package:
     bash install.sh
 
 
-
 To scan the GGM parameter space:
 
 * Usage:

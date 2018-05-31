@@ -263,7 +263,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     br_gl_n2 = br_gl_n2g + br_gl_n2qq
     br_gl_n3 = br_gl_n3g + br_gl_n3qq
 
-
     # Fix files modified by hand
     br_total = br_gl_n1 + br_gl_n2 + br_gl_n3 + br_gl_c1 + br_gl_Gg + br_gl_other
 
@@ -309,7 +308,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         # N1 -> ~G h0
         elif pid0 == 1000039 and pid1 == 25:
             br_n1_Gh += dc.br
-
 
     # neutralino2 decays
     n2 = DECAYS[1000023]
@@ -364,7 +362,6 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
         elif pid0 == 1000039:
             br_n3_GX += dc.br
 
-
     # chargino1 decays
     c1 = DECAYS[1000024]
 
@@ -386,10 +383,10 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
             else:
                 br_c1_n1lnu += dc.br
 
-
         # C1 -> ~G W
         elif pid0 == 1000039 and pid1 == 24:
             br_c1_GW += dc.br
+
 
     values = [
         # parameters

@@ -4,14 +4,7 @@ import os
 import shutil
 import string
 
-def writeSuspectPar(m1, m2, m3, mu, tanb, msq, at):
-
-    #arguments: M1, M3, mu, At
-    Msf12 = msq
-    Msf3  = msq
-
-    # inputs remaining constant through the scan:
-    SLHAInputTemplate = string.Template("""\
+slha_template = """
 Block MODSEL                 # Select model
    1    ${MODSEL}            # general MSSM low scale
 Block SU_ALGO  # !Optional SUSPECT v>=2.3* block: algorithm control parameters
@@ -79,7 +72,16 @@ Block EXTPAR                 # Input parameters
    47    ${Msq}     # M_dR
    48    ${Msq}     # M_sR
    49    ${Msq}     # M_bR
-""")
+"""
+
+def writeSuspectPar(m1, m2, m3, mu, tanb, msq, at):
+
+    #arguments: M1, M3, mu, At
+    Msf12 = msq
+    Msf3  = msq
+
+    # inputs remaining constant through the scan:
+    SLHAInputTemplate = string.Template(slha_template)
 
     SLHAInput = SLHAInputTemplate.substitute({
         'MODSEL': 0,
@@ -94,10 +96,9 @@ Block EXTPAR                 # Input parameters
         'tanBeta' : tanb,
     })
 
-
-    InFile = open('suspect2_lha.in', 'w')
-    InFile.write(SLHAInput)
-    InFile.close()
+    in_file = open('suspect2_lha.in', 'w')
+    in_file.write(SLHAInput)
+    in_file.close()
 
 
 def create_run_directory(run_dir='.'):
@@ -142,6 +143,43 @@ def clean_run_directory():
             pass
 
 
+def add_gravitino_mass(slha_file, gravitino_mass):
+
+    lines = open(slha_file).read().split('\n')
+    new_lines = []
+    for line in lines:
+        new_lines.append(line)
+        if line.strip().startswith('1000037'):
+            new_lines.append('   1000039     %.8E   # ~gravitino' % gravitino_mass)
+
+    with open(slha_file+'.new', 'w+') as f:
+        for line in new_lines:
+            if line:
+                f.write(line+'\n')
+
+    os.system('mv %s.new %s' % (slha_file, slha_file))
+
+
+def fix_higgs_mass(slha_file, higgs_mass=125):
+
+    lines = open(slha_file).read().split('\n')
+    new_lines = []
+    for line in lines:
+        if line.strip().startswith('25') and line.strip().endswith('# h'):
+            new_lines.append('        25     %.8E   # h' % higgs_mass)
+        else:
+            new_lines.append(line)
+
+    with open(slha_file+'.new', 'w+') as f:
+        for line in new_lines:
+            if line:
+                f.write(line+'\n')
+
+    os.system('mv %s.new %s' % (slha_file, slha_file))
+
+
+
+
 # SUSY-HIT: generate SLHA file
 def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None, debug=False):
 
@@ -158,20 +196,21 @@ def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None, debug=Fals
         st = os.system('./suspect2 > /dev/null 2>&1')
 
     if st != 0:
+        print('Suspect failed')
         return None
 
     # Copy Suspect output to SUSYHIT input
     os.system('mv suspect2_lha.out slhaspectrum.in')
 
     # hack MODSEL (to make it 'look like' GMSB)
-    os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
+    # os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
 
     # add the gravitino by hand!
-    os.system('AddGravitino slhaspectrum.in %s' % Gmass)
+    add_gravitino_mass('slhaspectrum.in', Gmass)
 
     # Fix Higgs mass (if needed)
-    Hmass = 126
-    os.system('FixHiggs slhaspectrum.in %s' % Hmass)
+    fix_higgs_mass('slhaspectrum.in', 125)
+
 
     # Run SUSYHIT
     if debug:
@@ -180,6 +219,7 @@ def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None, debug=Fals
         st = os.system('./runSUSYHIT > /dev/null 2>&1')
 
     if st != 0:
+        print('SUSYHIT failed')
         return None
 
     os.system('mv susyhit_slha.out %s' % outfile)
