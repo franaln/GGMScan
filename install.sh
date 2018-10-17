@@ -32,18 +32,18 @@ echo
 echo "*** getting SuSpect package from source..."
 mkdir -p SuSpect
 cd SuSpect
-curl -O https://www.coulomb.univ-montp2.fr/perso/jean-loic.kneur/Suspect/suspect2.51.tar.gz
+curl -O http://www.coulomb.univ-montp2.fr/perso/jean-loic.kneur/Suspect/suspect2.tar.gz
 
 ## untar
 echo
 echo ">> extracting..."
-tar zxfv suspect2.51.tar.gz
+tar zxfv suspect2.tar.gz
 
 ## compile it
 echo
 echo ">> compiling..."
-echo 'gfortran -c suspect2_call.f suspect2.51.f twoloophiggs.f bsg.f' > compileit.sh
-echo 'gfortran -o suspect2 suspect2_call.o suspect2.51.o twoloophiggs.o bsg.o' >> compileit.sh
+echo 'gfortran -c suspect2_call.f suspect2.f twoloophiggs.f bsg.f' > compileit.sh
+echo 'gfortran -o suspect2 suspect2_call.o suspect2.o twoloophiggs.o bsg.o' >> compileit.sh
 chmod +x compileit.sh
 . compileit.sh
 
