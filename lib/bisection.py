@@ -38,3 +38,14 @@ def bisection(fn, vmin, vmax, precision=0.01, max_iteration=100, debug=False):
 
 
     return p, v_p
+
+
+# def bisection_2d(fn1, fn2, vmin1, vmax1, vmin2, vmax2, precision1=0.01, precision2=0.01):
+
+#     """
+#     fn1, fn2 must have two input parameters: v1 and v2
+#     """
+
+#     best_v1 = bisection(fn1, vmin1, vmax1, precision1)[0]
+
+#     best_v2 = bisection(fn2, vmin2, vmax2, precision2)[0]

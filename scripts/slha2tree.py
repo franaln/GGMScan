@@ -206,7 +206,10 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     ## gluino decays
     gluino = DECAYS[1000021]
 
-    ctau_gl = hbar * cspeed / gluino.totalwidth * 1000.
+    try:
+        ctau_gl = hbar * cspeed / gluino.totalwidth * 1000.
+    except:
+        ctau_gl = 0.
 
     br_gl_n1qq = 0
     br_gl_n2qq = 0
@@ -266,7 +269,7 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     # Fix files modified by hand
     br_total = br_gl_n1 + br_gl_n2 + br_gl_n3 + br_gl_c1 + br_gl_Gg + br_gl_other
 
-    if br_total < 0.99:
+    if br_total < 0.99 and br_total > 0.:
         br_gl_n1g  = br_gl_n1g/br_total
         br_gl_n1qq = br_gl_n1qq/br_total
         br_gl_n2g  = br_gl_n2g/br_total
@@ -287,7 +290,10 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     # neutralino1 decays
     n1 = DECAYS[1000022]
 
-    ctau_n1 = hbar * cspeed / n1.totalwidth * 1000.
+    try:
+        ctau_n1 = hbar * cspeed / n1.totalwidth * 1000.
+    except:
+        ctau_n1 = 0.
 
     br_n1_GZ = 0
     br_n1_Gy = 0
@@ -312,7 +318,10 @@ for evt, infile in enumerate(get_slha_files(args.slhapath)):
     # neutralino2 decays
     n2 = DECAYS[1000023]
 
-    ctau_n2 = hbar * cspeed / n2.totalwidth * 1000.
+    try:
+        ctau_n2 = hbar * cspeed / n2.totalwidth * 1000.
+    except:
+        ctau_n2 = 0.
 
     br_n2_n1 = 0
     br_n2_c1 = 0

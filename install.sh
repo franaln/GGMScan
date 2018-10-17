@@ -7,7 +7,6 @@ mkdir SUSYHIT
 cd SUSYHIT
 curl -O https://www.itp.kit.edu/~maggie/SUSY-HIT/susyhit.tar.gz
 
-
 ## untar
 echo
 echo ">> extracting..."
@@ -44,16 +43,6 @@ echo
 echo ">> compiling..."
 echo 'gfortran -c suspect2_call.f suspect2.f twoloophiggs.f bsg.f' > compileit.sh
 echo 'gfortran -o suspect2 suspect2_call.o suspect2.o twoloophiggs.o bsg.o' >> compileit.sh
-chmod +x compileit.sh
-. compileit.sh
+bash compileit.sh
 
 cd $ROOTDIR
-
-##create setup script
-echo export SUSYGRID=$PWD >> setup.sh
-echo export PATH=$PWD/scripts:$PATH >> setup.sh
-echo export PYTHONPATH=$PWD/lib:$PYTHONPATH >> setup.sh
-
-echo
-echo "GO!!"
-echo

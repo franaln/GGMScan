@@ -1,0 +1,3 @@
+export SUSYGRID=$PWD
+export PATH=$SUSYGRID/scripts:$PATH
+export PYTHONPATH=$SUSYGRID/lib:$PWD/scripts:$PYTHONPATH

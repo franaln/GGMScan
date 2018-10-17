@@ -15,7 +15,7 @@ Block SU_ALGO  # !Optional SUSPECT v>=2.3* block: algorithm control parameters
    4    2   # RGE accuracy: 1: moderate, 2: accurate (but slower)
    6    1   #  1: M_Hu, M_Hd input (default in constrained models)
 #        (other possibility 0: MA_pole, MU(EWSB) input instead)
-   7    2   #  choice for sparticles masses rad. corr. (=/= h):
+   7    1   #  choice for sparticles masses rad. corr. (=/= h):
 #               2 ->all (recommended, defaut); 1->no R.C. in squarks & gauginos.
    8    0   # 1 (default): EWSB scale=(mt_L*mt_R)^(1/2)
 #         (Or = 0: arbitrary EWSB scale: give EWSB in Block EXTPAR below)
@@ -149,6 +149,7 @@ def add_gravitino_mass(slha_file, gravitino_mass):
     new_lines = []
     for line in lines:
         new_lines.append(line)
+
         if line.strip().startswith('1000037'):
             new_lines.append('   1000039     %.8E   # ~gravitino' % gravitino_mass)
 
@@ -203,14 +204,13 @@ def generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile=None, debug=Fals
     os.system('mv suspect2_lha.out slhaspectrum.in')
 
     # hack MODSEL (to make it 'look like' GMSB)
-    # os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
+    os.system("sed -i 's/.*general MSSM.*/     1   2    #GMSB/' slhaspectrum.in")
 
     # add the gravitino by hand!
     add_gravitino_mass('slhaspectrum.in', Gmass)
 
     # Fix Higgs mass (if needed)
     fix_higgs_mass('slhaspectrum.in', 125)
-
 
     # Run SUSYHIT
     if debug:
