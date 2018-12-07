@@ -163,7 +163,7 @@ def draw_m3mu_frame(m3min, m3max, mumin, mumax):
 
 def draw_gln1_frame(glmin, glmax, n1min, n1max):
 
-    canvas = ROOT.TCanvas('', '', 800,800)
+    canvas = ROOT.TCanvas('', '', 800,600)
     canvas.SetTickx(0)
     canvas.SetTicky(0)
 
@@ -178,9 +178,10 @@ def draw_gln1_frame(glmin, glmax, n1min, n1max):
     frame = ROOT.TH2F('h2', 'h2', nx, glmin, glmax, ny, n1min, n1max)
     ROOT.SetOwnership(frame, False)
     frame.SetTitle('')
+    frame.SetStats(0)
 
     canvas.SetTicks()
-    canvas.SetLeftMargin(0.13)
+    canvas.SetLeftMargin(0.1)
     canvas.SetBottomMargin(0.1)
     canvas.SetRightMargin(0.05)
     canvas.SetTopMargin(0.05)
@@ -194,7 +195,7 @@ def draw_gln1_frame(glmin, glmax, n1min, n1max):
     frame.GetXaxis().SetLabelSize(0.03)
     frame.GetYaxis().SetLabelSize(0.03)
     frame.GetXaxis().SetTitleOffset(1.4)
-    frame.GetYaxis().SetTitleOffset(2.0)
+    frame.GetYaxis().SetTitleOffset(1.6)
 
     frame.GetXaxis().SetNdivisions(10, 3, 0)
     frame.GetYaxis().SetNdivisions(10, 5, 0)
@@ -213,6 +214,7 @@ def draw_gln1_frame(glmin, glmax, n1min, n1max):
     flabel.SetTextSize(0.02)
     flabel.SetTextColor(ROOT.kGray)
     flabel.SetTextAngle(30)
+    flabel.SetTextFont(42)
     flabel.Draw()
 
     # Redraw axis and update canvas
@@ -239,7 +241,7 @@ def draw_mu_frame(mumin, mumax): ##, glmin=None, glmax=None, n1min=None, n1max=N
     frame.SetTitle('')
 
     canvas.SetTicks()
-    canvas.SetLeftMargin(0.12)
+    canvas.SetLeftMargin(0.11)
     canvas.SetBottomMargin(0.121)
 
     # if glmin is not None:

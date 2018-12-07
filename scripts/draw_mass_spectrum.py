@@ -9,108 +9,88 @@ import argparse
 import ROOT
 import pyslha
 
-from rootutils import set_default_style, get_color
 
-color1 = get_color('red')
-color2 = get_color('yellow')
-color3 = get_color('green')
-color4 = get_color('blue')
-color5 = get_color('turquoise')
-color6 = get_color('purple')
-color7 = get_color('gray')
+color1 = ROOT.TColor.GetColor('#A60628')
+color2 = ROOT.TColor.GetColor('#e2a233')
+color3 = ROOT.TColor.GetColor('#32b43c')
+color4 = ROOT.TColor.GetColor('#348ABD')
+color5 = ROOT.TColor.GetColor('#188487')
+color6 = ROOT.TColor.GetColor('#7A68A6')
+color7 = ROOT.TColor.GetColor('#838283')
 
-colors = {
-    1000022:  color1,
-    1000023:  color1,
-    1000025:  color1,
-    1000035:  color1,
-    1000024:  color2,
-    1000037:  color2,
-    1000002:  color3,
-    2000002:  color3,
-    1000001:  color3,
-    2000001:  color3,
-    1000003:  color3,
-    2000003:  color3,
-    1000004:  color3,
-    2000004:  color3,
-    1000006:  color3,
-    2000006:  color3,
-    1000005:  color3,
-    2000005:  color3,
-    1000011:  color4,
-    2000011:  color4,
-    1000012:  color4,
-    1000013:  color4,
-    2000013:  color4,
-    1000014:  color4,
-    1000015:  color4,
-    2000015:  color4,
-    1000016:  color4,
-    25     :  color5,
-    35     :  color5,
-    37     :  color5,
-    36     :  color5,
-    1000021:  color6,
-    1000039:  color7,
-}
+# colors = {
+#     1000022:  color1,
+#     1000023:  color1,
+#     1000025:  color1,
+#     1000035:  color1,
+#     1000024:  color2,
+#     1000037:  color2,
+#     1000002:  color3,
+#     2000002:  color3,
+#     1000001:  color3,
+#     2000001:  color3,
+#     1000003:  color3,
+#     2000003:  color3,
+#     1000004:  color3,
+#     2000004:  color3,
+#     1000006:  color3,
+#     2000006:  color3,
+#     1000005:  color3,
+#     2000005:  color3,
+#     1000011:  color4,
+#     2000011:  color4,
+#     1000012:  color4,
+#     1000013:  color4,
+#     2000013:  color4,
+#     1000014:  color4,
+#     1000015:  color4,
+#     2000015:  color4,
+#     1000016:  color4,
+#     25     :  ,
+#     35     :  color5,
+#     37     :  color5,
+#     36     :  color5,
+#     1000021:  color6,
+#     1000039:  ,
+# }
 
-labels = {
+# labels = {
 
-    1000022: '#tilde{#chi}^{0}_{1}',
-    1000023: '#tilde{#chi}^{0}_{2}',
-    1000025: '#tilde{#chi}^{0}_{3}',
-    1000035: '#tilde{#chi}^{0}_{4}',
-    1000024: '#tilde{#chi}^{#pm}_{1}',
-    1000037: '#tilde{#chi}^{#pm}_{2}',
+#     1000022:
+#     1000023:
+#     1000025:
+#     1000035:
+#     1000024:
+#     1000037:
 
-    1000001: "#tilde{q}_{L}",
-    2000001: "#tilde{q}_{R}",
+#     1000001: "#tilde{q}_{L}",
+#     2000001: "#tilde{q}_{R}",
 
-    # 1000002: "#tilde{u}_{L}",
-    # 2000002: "#tilde{u}_{R}",
-    # 1000001: "#tilde{d}_{L}",
-    # 2000001: "#tilde{d}_{R}",
-    # 1000003: "#tilde{s}_{L}",
-    # 2000003: "#tilde{s}_{R}",
-    # 1000004: "#tilde{c}_{L}",
-    # 2000004: "#tilde{c}_{R}",
-    1000006: "#tilde{t}_{1}",
-    2000006: "#tilde{t}_{2}",
-    1000005: "#tilde{b}_{1}",
-    2000005: "#tilde{b}_{2}",
+#     1000006: "#tilde{t}_{1}",
+#     2000006: "#tilde{t}_{2}",
 
-    1000011: "#tilde{l}_{L}",
-    2000011: "#tilde{l}_{R}",
-    1000012: "#tilde{#nu}_{L}",
+#     1000011: "#tilde{l}_{L}",
+#     2000011: "#tilde{l}_{R}",
+#     1000012: "#tilde{#nu}_{L}",
 
-    # 1000011: "#tilde{e}_{L}",
-    # 2000011: "#tilde{e}_{R}",
-    # 1000012: "#tilde{#nu}_{eL}",
-    # 1000013: "#tilde{#mu}_{L}",
-    # 2000013: "#tilde{#mu}_{R}",
-    # 1000014: "#tilde{#nu}_{#muL}",
-    # 1000015: "#tilde{#tau}_{1}",
-    # 2000015: "#tilde{#tau}_{2}",
-    # 1000016: "#tilde{#nu}_{#tauL}",
 
-    25     : "h^{0}",
-    35     : "H^{0}",
-    36     : "A^{0}",
-    37     : "H^{#pm}",
-    1000021: "#tilde{g}",
-    1000039: "#tilde{G}",
-}
+#     25     : ,
+#     35     :
+#     36     :
+#     37     : ,
+#     1000021: ,
+#     1000039: ,
+# }
 
 
 class Particle:
-    def __init__(self, pdgid, mass=0.):
+    def __init__(self, mass, label, color):
 
-        self.pdgid = pdgid
         self.mass = mass
 
-        self.label = labels[pdgid]
-        self.color = colors[pdgid]
+        self.label = label
+        self.color = color
+
 
 def main():
 
@@ -128,12 +108,35 @@ def main():
         sys.exit(1)
 
     ## Read spectrum file
-    try:
-        doc = pyslha.read(ifile)
-        masses = doc.blocks['MASS']
-    except pyslha.ParseError as pe:
-        print (str(pe) + "... exiting")
-        sys.exit(1)
+    # try:
+    #     doc = pyslha.read(ifile)
+    #     print (doc.blocks)
+    #     masses = [ abs(float(m)) for m in doc.blocks['MASS'] ]
+    # except pyslha.ParseError as pe:
+    #     print (str(pe) + "... exiting")
+    #     sys.exit(1)
+    start_reading = False
+    masses = {}
+    with open(ifile) as f:
+        lines  = f.read().split('\n')
+
+        for line in lines:
+            if start_reading:
+                try:
+                    pdgid, mass, _, _ = line.split()
+
+                    pdgid = int(pdgid)
+                    mass = abs(float(mass))
+
+                    masses[pdgid] = mass
+
+                except:
+                    continue
+
+            elif line.startswith('BLOCK MASS'):
+                start_reading = True
+            else:
+                continue
 
 
     def find_max(plst):
@@ -153,58 +156,132 @@ def main():
 
     ### Get mass of susy particles
     particles = [
-
         #gravitino
-        Particle(1000039),
+        Particle(masses[1000039], "#tilde{G}", color7),
 
         #Higgses
-        Particle(25),
-        Particle(35),
-        Particle(37),
-        Particle(36),
+        Particle(masses[25], "h^{0}", color5),
+        Particle(masses[35], "H^{0}", color5),
+        Particle(masses[37], "A^{0}", color5),
+        Particle(masses[36], "H^{#pm}", color5),
 
         #gluino
-        Particle(1000021),
+        Particle(masses[1000021], "#tilde{g}", color6),
 
         #Neutralinos
-        Particle(1000022),
-        Particle(1000023),
-        Particle(1000025),
-        Particle(1000035),
+        Particle(masses[1000022], '#tilde{#chi}^{0}_{1}', color1),
+        Particle(masses[1000023], '#tilde{#chi}^{0}_{2}', color1),
+        Particle(masses[1000025], '#tilde{#chi}^{0}_{3}', color1),
+        Particle(masses[1000035], '#tilde{#chi}^{0}_{4}', color1),
 
         #Charginos
-        Particle(1000024),
-        Particle(1000037),
-
-        #Squarks
-        Particle(1000001),
-        Particle(2000001),
-        # Particle(1000002),
-        # Particle(2000002),
-        # Particle(1000003),
-        # Particle(2000003),
-        # Particle(1000004),
-        # Particle(2000004),
-        Particle(1000006),
-        Particle(2000006),
-        Particle(1000005),
-        Particle(2000005),
-
-        #Sleptons
-        Particle(1000011),
-        Particle(2000011),
-        Particle(1000012),
-        # Particle(1000013),
-        # Particle(2000013),
-        # Particle(1000014),
-        # Particle(1000015),
-        # Particle(2000015),
-        # Particle(1000016),
-
+        Particle(masses[1000024], '#tilde{#chi}^{#pm}_{1}', color2),
+        Particle(masses[1000037], '#tilde{#chi}^{#pm}_{2}', color2),
     ]
 
-    for i, p in enumerate(particles):
-        particles[i].mass = abs(float(masses[p.pdgid]))
+    ## Sleptons
+    sleptons = [
+        1000011,
+        2000011,
+        1000013,
+        2000013,
+    ]
+
+    max_val = max([ masses[pid] for pid in sleptons ])
+    min_val = min([ masses[pid] for pid in sleptons ])
+
+    if (max_val - min_val) < 5:
+        particles.append(Particle(min_val, "#tilde{l}", color4))
+    else:
+        particles.append(Particle(masses[1000011], "#tilde{e}_{L}", color4))
+        particles.append(Particle(masses[2000011], "#tilde{e}_{R}", color4))
+        particles.append(Particle(masses[1000013], "#tilde{#mu}_{L}", color4))
+        particles.append(Particle(masses[2000013], "#tilde{#mu}_{R}", color4))
+
+
+    staus = [
+        1000015,
+        2000015,
+    ]
+
+    max_val = max([ masses[pid] for pid in staus ])
+    min_val = min([ masses[pid] for pid in staus ])
+
+    if (max_val - min_val) < 5:
+        particles.append(Particle(min_val, "#tilde{#tau}", color4))
+    else:
+        particles.append(Particle(mmasses[1000015], "#tilde{#tau}_{1}", color4))
+        particles.append(Particle(mmasses[2000015], "#tilde{#tau}_{2}", color4))
+
+
+
+    snus = [
+        1000012,
+        1000014,
+        1000016,
+    ]
+
+    max_val = max([ masses[pid] for pid in snus ])
+    min_val = min([ masses[pid] for pid in snus ])
+
+    if (max_val - min_val) < 5:
+        particles.append(Particle(min_val, "#tilde{#nu}", color4))
+    else:
+        particles.append(Particle(mmasses[1000012], "#tilde{#nu}_{eL}",    color4))
+        particles.append(Particle(mmasses[1000014], "#tilde{#nu}_{#muL}",  color4))
+        particles.append(Particle(mmasses[1000016], "#tilde{#nu}_{#tauL}", color4))
+
+
+    # Merge squarks/sleptons if are similar
+    squarks = [
+        1000001,
+        2000001,
+        1000002,
+        2000002,
+        1000003,
+        2000003,
+        1000004,
+        2000004,
+        1000005,
+        2000005,
+    ]
+
+    labels = [
+        "#tilde{d}_{L}",
+        "#tilde{d}_{R}",
+        "#tilde{u}_{L}",
+        "#tilde{u}_{R}",
+        "#tilde{s}_{L}",
+        "#tilde{s}_{R}",
+        "#tilde{c}_{L}",
+        "#tilde{c}_{R}",
+        "#tilde{b}_{1}",
+        "#tilde{b}_{2}",
+    ]
+
+    max_val = max([ masses[pid] for pid in squarks ])
+    min_val = min([ masses[pid] for pid in squarks ])
+
+    if (max_val - min_val) < 5:
+        particles.append(Particle(min_val, "#tilde{q}", color3))
+    else:
+        for p, label in zip(squarks, labels):
+            particles.append(Particle(masses[p], label, color3))
+
+
+    stops = [
+        1000006,
+        2000006,
+    ]
+
+    max_val = max([ masses[pid] for pid in stops ])
+    min_val = min([ masses[pid] for pid in stops ])
+
+    if (max_val - min_val) < 5:
+        particles.append(Particle(min_val, "#tilde{t}", color3))
+    else:
+        particles.append(Particle(masses[1000006], "#tilde{t}_{1}", color3))
+        particles.append(Particle(masses[2000006], "#tilde{t}_{2}", color3))
 
 
     max_ = find_max(particles) * 1.1 if args.maxmass is None else float(args.maxmass)
@@ -222,16 +299,17 @@ def main():
             Nparts += 1
 
     # Drawall spectrum lines
-    set_default_style()
 
     cmass = ROOT.TCanvas("cmass", "", 800, 600)
     cmass.SetLeftMargin(0.09)
     cmass.SetRightMargin(0.05)
     cmass.SetTopMargin(0.05)
     cmass.SetBottomMargin(0.08)
-    cmass.SetTicks()
+    cmass.SetTicks(1, 1)
 
     frame = ROOT.TH2F("frame", "", 1, -1, Nparts+1, 100, min_, max_)
+
+    frame.SetStats(0)
 
     frame.GetXaxis().SetLabelSize(0)
     frame.GetXaxis().SetTickLength(0)
@@ -240,7 +318,7 @@ def main():
     frame.GetXaxis().SetTitleOffset(0.6)
 
     frame.GetYaxis().SetTitle("Mass [GeV]")
-    frame.GetYaxis().SetTitleOffset(1.2)
+    frame.GetYaxis().SetTitleOffset(1.25)
     frame.GetYaxis().SetRangeUser(min_, max_)
 
     frame.Draw()
@@ -265,7 +343,7 @@ def main():
             xmin = np * lwidth
             shift = lwidth * 0.25
 
-            label = ROOT.TLatex(xmin+shift, p.mass+50, p.label)
+            label = ROOT.TLatex(xmin+shift, p.mass+100, p.label)
             ROOT.SetOwnership(label, False)
             label.SetTextSize(0.025)
             label.SetTextFont(132)

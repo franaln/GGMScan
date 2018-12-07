@@ -2,7 +2,7 @@
 
 import argparse
 import ROOT
-from rootutils import *
+from rootutils.rootutils import *
 
 
 labels = {
@@ -85,6 +85,8 @@ def get_histogram(filename, x, y, z=False, selection=''):
 
         tree.Draw(varstr, selection)
         g = ROOT.gPad.GetPrimitive("Graph")
+
+        g = sort_graph(g)
 
     else:
         varstr = '%s:%s:%s>>htmp' % (y, x, z)
@@ -279,6 +281,8 @@ if __name__ == '__main__':
 
     ROOT.gROOT.SetBatch()
 
-    set_default_style()
+    # set_default_style()
+    ROOT.gStyle.SetPalette(57)
+
 
     main()
