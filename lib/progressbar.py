@@ -62,7 +62,7 @@ class ProgressBar:
         elif unit == 3:
             rate_str += "GHz"
 
-        bar = '['
+        bar = '\r['
         for i in range(self.barlength):
             if i < self.current_progress:
                 bar += '='
@@ -80,7 +80,7 @@ class ProgressBar:
 
         # Print to screen
         # self.clear_line()
-        sys.stdout.write(bar+'\n')
+        sys.stdout.write(bar)
         sys.stdout.flush()
 
     def clear_line(self):
