@@ -109,16 +109,14 @@ def get_histogram(filename, x, y, z=False, selection=''):
 
 def slhaplot2(filename, x, y, z, selection='', outname='x.pdf', xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, text=''):
 
-    # set_palette()
-
     g = get_histogram(filename, x, y, z, selection)
 
     g.GetXaxis().SetTitle(labels.get(x, x))
     g.GetYaxis().SetTitle(labels.get(y, y))
-    g.GetYaxis().SetTitleOffset(1.5)
+    g.GetYaxis().SetTitleOffset(1.7)
 
-    #g.GetZaxis().SetTitle(labels.get(z, z))
-    #g.GetZaxis().SetTitleOffset(1.4)
+    g.GetZaxis().SetTitle(labels.get(z, z))
+    g.GetZaxis().SetTitleOffset(1.7)
 
     if xmin is not None and xmax is not None:
         g.GetXaxis().SetRangeUser(xmin, xmax)
@@ -127,43 +125,25 @@ def slhaplot2(filename, x, y, z, selection='', outname='x.pdf', xmin=None, xmax=
 
     c = ROOT.TCanvas('', '', 800, 800)
     c.SetLeftMargin(0.12)
-    c.SetTopMargin(0.08)
+    c.SetTopMargin(0.06)
     if z is not None:
-        c.SetRightMargin(0.16)
+        c.SetRightMargin(0.18)
 
     if z:
-        #g.SetContour(999)
-        # if zmin is not None and zmax is not None:
-        #     # # g.SetMaximum(zmax)
-        #     # # g.SetMinimum(zmin)
-        #     # print (g)
-        #     # g.Print('all')
-        #     fix_hist2d(g)
-        #     g.DrawClone('col')
-        #     g.GetZaxis().SetRangeUser(zmin, zmax)
-        #     g.Draw('colz same')
+        g.SetContour(999)
+        if zmin is not None and zmax is not None:
+            g.SetContour(999)
+            g.GetZaxis().SetRangeUser(zmin, zmax)
 
-        # else:
         g.Draw('colz')
     else:
         g = sort_graph(g)
         g.Draw('pa')
 
-    if text:
-        text = labels.get(z, z) + ',  ' + text
-    else:
-        text = labels.get(z, z)
-
-
-    # line = ROOT.TLine(800, 800, 2200, 2200)
-    # line.SetLineColor(ROOT.kGray+2)
-    # line.SetLineStyle(2)
-    # line.Draw()
-
     if text is not None:
-        t = ROOT.TLatex(0.14, 0.94, text)
+        t = ROOT.TLatex(0.14, 0.96, text)
         t.SetNDC()
-        t.SetTextFont(132)
+        t.SetTextFont(42)
         t.SetTextSize(0.035)
         t.Draw()
 
@@ -262,17 +242,19 @@ def main():
     parser.add_argument('treepath', nargs='?', help='Path to slha tree')
     parser.add_argument('-o', dest='output_file', help='Output file', required=True)
 
-    parser.add_argument('-x')
-    parser.add_argument('-y')
-    parser.add_argument('-z')
-    parser.add_argument('-s', default='')
+    parser.add_argument('-x', help='X variable')
+    parser.add_argument('-y', help='Y variable')
+    parser.add_argument('-z', help='Z variable')
+    parser.add_argument('-s', default='', help='Selection')
+
+    parser.add_argument('--text', help='')
 
     args = parser.parse_args()
 
     if args.z is None:
         slhaplot1(args.treepath, args.x, args.y, outname=args.output_file)
     else:
-        slhaplot2(args.treepath, args.x, args.y, args.z, args.s, outname=args.output_file)
+        slhaplot2(args.treepath, args.x, args.y, args.z, args.s, outname=args.output_file, text=args.text)
 
 
 if __name__ == '__main__':

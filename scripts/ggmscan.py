@@ -20,10 +20,11 @@ def main():
 
     parser.add_argument('-c', dest='configfile', required=True, help='Configfile')
     parser.add_argument('-o', dest='outputdir', help='Output directory')
-    parser.add_argument('-v', '--verbose', action='store_true', help='verbose')
 
     parser.add_argument('--count', action='store_true', help='Count number of jobs')
     parser.add_argument('--scan', action='store_true', help='Do parameters scan')
+
+    parser.add_argument('--debug', action='store_true', help='Debug output')
 
     global args
     args = parser.parse_args()
@@ -102,46 +103,52 @@ def main():
         else:
             done_files = []
 
+        try:
+            bar = ProgressBar(njobs, len(done_files))
 
-        bar = ProgressBar(njobs, len(done_files))
+            rm_files = 0
 
-        rm_files = 0
+            progress = len(done_files) + 1
+            for at in v_at:
+                for tanb in v_tanb:
+                    for msq in v_msq:
+                        for m3 in v_m3:
+                            for m2 in v_m2:
+                                for m1 in v_m1:
+                                    for mu in v_mu:
+                                        for Gmass in v_gmass:
+                                            if filter_fn_par_copy(m1, m2, m3, mu, tanb, msq, at, Gmass):
+                                                continue
 
-        progress = len(done_files) + 1
-        for at in v_at:
-            for tanb in v_tanb:
-                for msq in v_msq:
-                    for m3 in v_m3:
-                        for m2 in v_m2:
-                            for m1 in v_m1:
-                                for mu in v_mu:
-                                    for Gmass in v_gmass:
-                                        if filter_fn_par_copy(m1, m2, m3, mu, tanb, msq, at, Gmass):
-                                            continue
+                                            outfile = 'm1_%s_m2_%s_m3_%s_mu_%s_tanb_%s_msq_%s_at_%s_Gmass_%s.slha' % (m1, m2, m3, mu, tanb, msq, at, Gmass)
 
-                                        outfile = 'at_%s_tanb_%s_msq_%s_m3_%s_m1_%s_mu_%s_Gmass_%s.slha' % (at, tanb, msq, m3, m1, mu, Gmass)
+                                            if outfile in done_files:
+                                                continue
 
-                                        if outfile in done_files:
-                                            continue
+                                            if args.debug:
+                                                print (outfile)
 
-                                        susyhitutils.generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile)
-
-
-                                        ## Check that the n1 mass is below gluino mass, otherwise remove slha file
-
-                                        if filter_fn_slha_copy(outfile):
-                                            rm_files += 1
-                                            os.system('rm %s' % outfile)
-
-                                        # if progress%10 == 0:
-                                        #     time.sleep(2)
+                                            susyhitutils.generate_slha(m1, m2, m3, mu, tanb, msq, at, Gmass, outfile, args.debug)
 
 
-                                        bar.print_bar(progress)
-                                        progress += 1
+                                            ## Check that the n1 mass is below gluino mass, otherwise remove slha file
+                                            if filter_fn_slha_copy(outfile):
+                                                rm_files += 1
+                                                os.system('rm %s' % outfile)
 
-        # end of loops
-        print('%i files removed beacuse slha filter' % rm_files)
+                                            # if progress%10 == 0:
+                                            #     time.sleep(2)
+
+                                            if not args.debug:
+                                                bar.print_bar(progress)
+                                            progress += 1
+
+
+            # end of loops
+            print('%i files removed beacuse slha filter' % rm_files)
+
+        except KeyboardInterrupt:
+            pass
 
 
     # Clean directory
