@@ -1,6 +1,9 @@
 GGMScan
 ========
 
+**OLD!** --> Use https://gitlab.cern.ch/falonso/ggm-scan instead
+
+
 To download and compile SUSYHIT package:
 
     bash install.sh
